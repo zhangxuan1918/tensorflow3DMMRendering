@@ -13,8 +13,8 @@ def rasterize_triangles(vertices, triangles, h, w):
     Each triangle has 3 vertices & Each vertex has 3 coordinates x, y, z.
     h, w is the size of rendering
 
-    :param: vertices: (n_vertex, 3)
-    :param: triangles: (n_triangle, 3)
+    :param: vertices:  [n_vertex,   3]
+    :param: triangles: [n_triangle, 3]
     :param: h: height
     :param: w: width
     :return: depth_buffer: [h, w] saves the depth, here, the bigger the z, the fronter the point.
@@ -27,23 +27,29 @@ def rasterize_triangles(vertices, triangles, h, w):
     barycentric_weight = tf.zeros([h, w, 3], dtype=tf.float32)
 
     rasterize_triangles_core(
-        vertices, triangles,
-        depth_buffer, triangle_buffer, barycentric_weight,
-        vertices.shape[0], triangles.shape[0],
-        h, w)
+        tf.identity(vertices),
+        tf.identity(triangles),
+        depth_buffer,
+        triangle_buffer,
+        barycentric_weight,
+        vertices.shape[0],
+        triangles.shape[0],
+        h,
+        w
+    )
 
 
 def render_colors(vertices, triangles, colors, h, w, channels=3, background_img=None):
     """
     render mesh with colors
-    :param: vertices: (nver, 3)
-    :param: triangles: (n_triangle, 3)
-    :param: colors: (n_vertex, 3)
-    :param: h: height
-    :param: w: width
-    :param: channels: channel
+    :param: vertices:       [nver,       3]
+    :param: triangles:      [n_triangle, 3]
+    :param: colors:         [n_vertex,   3]
+    :param: h:              height
+    :param: w:              width
+    :param: channels:       channel
     :param: background_img: background image
-    :return: image: [h, w, c]. rendered image
+    :return: image:         [h, w, c]. rendered image
     """
 
     # initial 
@@ -56,11 +62,16 @@ def render_colors(vertices, triangles, colors, h, w, channels=3, background_img=
     depth_buffer = tf.zeros([h, w], dtype=tf.float32) - 999999.
 
     mesh_core_cython.render_colors_core(
-        image, vertices, triangles,
+        tf.identity(image),
+        tf.identity(vertices),
+        tf.identity(triangles),
         colors,
         depth_buffer,
-        vertices.shape[0], triangles.shape[0],
-        h, w, channels)
+        vertices.shape[0],
+        triangles.shape[0],
+        h,
+        w,
+        channels)
     return image
 
 
@@ -68,15 +79,15 @@ def render_texture(vertices, triangles, texture, tex_coords, tex_triangles, h, w
                    background_img=None):
     """
     render mesh with texture map
-    :param: vertices: (n_vertex, 3)
-    :param: triangles: (n_triangle, 3)
-    :param: texture: (tex_h, tex_w, 3)
-    :param: tex_coords: (n_tex_coords, 3)
-    :param: tex_triangles: (ntri, 3)
-    :param: h: height of rendering
-    :param: w: width of rendering
-    :param: channels: channel
-    :param: mapping_type: 'bilinear' or 'nearest'
+    :param: vertices:       [n_vertex,     3]
+    :param: triangles:      [n_triangle,   3]
+    :param: texture:        [tex_h, tex_w, 3]
+    :param: tex_coords:     [n_tex_coords, 3]
+    :param: tex_triangles:  [ntri,         3]
+    :param: h:              height of rendering
+    :param: w:              width of rendering
+    :param: channels:       channel
+    :param: mapping_type:   "bilinear" or "nearest"
     """
     # initial 
     if background_img is None:
@@ -96,12 +107,22 @@ def render_texture(vertices, triangles, texture, tex_coords, tex_triangles, h, w
         mt = 0
 
     render_texture_core(
-        image, vertices, triangles,
-        texture, tex_coords, tex_triangles,
+        tf.identity(image),
+        tf.identity(vertices),
+        tf.identity(triangles),
+        tf.identity(texture),
+        tf.identity(tex_coords),
+        tf.identity(tex_triangles),
         depth_buffer,
-        vertices.shape[0], tex_coords.shape[0], triangles.shape[0],
-        h, w, channels,
-        tex_h, tex_w, tex_c,
+        vertices.shape[0],
+        tex_coords.shape[0],
+        triangles.shape[0],
+        h,
+        w,
+        channels,
+        tex_h,
+        tex_w,
+        tex_c,
         mt)
     return image
 
