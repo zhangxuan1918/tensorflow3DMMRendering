@@ -142,7 +142,7 @@ def generate_vertex_norm(vertices, triangles, n_vertices, n_triangles):
     # it's not easy to do it in tensorflow, here we just assign the norm vector
     # with magnitude 1 and each axis has the same value
     N = tf.where(tf.tile(index, (1, 3)), tf.ones(N.shape, dtype=tf.float32), N)
-    N = tf.math.truediv(N, tf.tile(tf.math.sqrt(mag), (1, 3)))
+    N = tf.divide(N, tf.math.sqrt(mag))
     return -N
 
 
