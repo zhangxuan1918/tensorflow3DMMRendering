@@ -5,14 +5,16 @@ import imageio
 import numpy as np
 import scipy.io as sio
 import tensorflow as tf
-from dirt import lighting
 
 from face3d.morphable_model import MorphabelModel
+from tf_3dmm.mesh.transform import affine_transform
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+from tf_3dmm.tf_util import is_tf_expression
 
 frame_width, frame_height = 450, 450
 
 
-def unit(vector):
+def normalize(vector):
     return tf.convert_to_tensor(vector) / tf.norm(vector)
 
 
@@ -62,54 +64,57 @@ def sample_texture(texture, indices, mode='bilinear'):
         raise NotImplementedError
 
 
-def process_uv(uv_coords, uv_h=256, uv_w=256):
-    uv_coords[:, 0] = uv_coords[:, 0] * (uv_w - 1)
-    uv_coords[:, 1] = uv_coords[:, 1] * (uv_h - 1)
-    uv_coords[:, 1] = uv_h - uv_coords[:, 1] - 1
-    uv_coords = np.hstack((uv_coords, np.zeros((uv_coords.shape[0], 1))))  # add z
-    return np.asarray(uv_coords, np.float32)
+def process_uv(uv_coords, uv_height, uv_width):
+
+    uv_x = uv_coords[:, 0] * (uv_width - 1)
+    uv_y = uv_coords[:, 1] * (uv_height - 1)
+    uv_y = uv_height - uv_y - 1
+
+    uv_cords = tf.stack(
+        [uv_x, uv_y],
+        axis=0,
+        name='stack'
+    )
+    return uv_cords
 
 
-def main():
-    bfm = MorphabelModel('../../examples/Data/BFM/Out/BFM.mat')
-    # --load mesh data
-    pic_name = 'IBUG_image_008_1_0'
-    # pic_name = 'IBUG_image_014_01_2'
-    mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
-    mat_data = sio.loadmat(mat_filename)
-    sp = mat_data['Shape_Para']
-    ep = mat_data['Exp_Para']
+def render(
+        pose_param,
+        shape_param,
+        exp_param,
+        tex_param,
+        color_param,
+        illum_param,
+        frame_width,
+        frame_height,
+        tf_bfm: TfMorphableModel
+):
+    assert is_tf_expression(pose_param)
+    assert is_tf_expression(shape_param)
+    assert is_tf_expression(exp_param)
+    assert is_tf_expression(tex_param)
+    assert is_tf_expression(color_param)
+    assert is_tf_expression(illum_param)
 
-    vertices = bfm.generate_vertices(sp, ep)
-    triangles = bfm.triangles
+    vertices = tf_bfm.get_vertices(shape_param=shape_param, exp_param=exp_param)
+    vertex_norm = None # TODO
 
-    tp = mat_data['Tex_Para']
-    tex = bfm.generate_tex_xuan(tex_para=tp)
-    cp = mat_data['Color_Para']
-    ip = mat_data['Illum_Para']
+    colors = tf_bfm.get_vertex_colors(
+        tex_param=tex_param,
+        color_param=color_param,
+        illum_param=illum_param,
+        vertex_norm=vertex_norm
+    )
 
-    import face3d.mesh_numpy as mesh
-    # norm = mesh.render.generate_vertex_norm(vertices=vertices, triangles=bfm.triangles,
-    #                                         nver=bfm.nver, ntri=bfm.ntri)
-    norm = lighting.vertex_normals(vertices, triangles)
-    colors = bfm.generate_tex_color_xuan(tex, cp, ip, norm)
-    colors = np.clip(colors / 255., 0., 1.)
-    colors = np.asarray(colors, dtype=np.float32)
-
-    # colors = colors / np.max(colors)
-
-    pp = mat_data['Pose_Para']
-    s = pp[0, 6]
-    # angles = [np.rad2deg(pp[0, 0]), np.rad2deg(pp[0, 1]), np.rad2deg(pp[0, 2])]
-    angles = pp[0, 0:3]
-    # angles = [0, 0, 0]
-    t = pp[0, 3:6]
-
-    transformed_vertices = bfm.transform_3ddfa(vertices, s, angles, t)
+    transformed_vertices = affine_transform(
+        vertices=vertices,
+        scaling=pose_param[0, 6],
+        angles_rad=pose_param[0, 0:3],
+        t3d=pose_param[0, 3:6]
+    )
     transformed_vertices[:, 0] = transformed_vertices[:, 0] * 2 / frame_width - 1
     transformed_vertices[:, 1] = transformed_vertices[:, 1] * 2 / frame_height - 1
-    transformed_vertices[:, 2] = -transformed_vertices[:, 2] / np.max(np.abs(transformed_vertices[:, 2]))
-    transformed_vertices = np.asarray(transformed_vertices, dtype=np.float32)
+    transformed_vertices[:, 2] = -transformed_vertices[:, 2] / tf.math.reduce_max(tf.math.abs(transformed_vertices[:, 2]))
 
     # Convert vertices to homogeneous coordinates
     transformed_vertices = tf.concat([
@@ -117,18 +122,13 @@ def main():
         tf.ones_like(transformed_vertices[:, -1:])
     ], axis=1)
 
-    # Render the G-buffer channels (mask, UVs, and normals at each pixel) needed for deferred shading
+    # Render the G-buffer
     image = dirt.rasterise(
-        vertices=transformed_vertices,  # (24, 4)
-        faces=triangles.tolist(),  # [[]]
+        vertices=transformed_vertices,
+        faces=tf_bfm.triangles,
         vertex_colors=colors,
         background=tf.zeros([frame_height, frame_width, 3]),
         width=frame_width, height=frame_height, channels=3
     )
 
-    image_eval = image.numpy()
-    imageio.imsave('./textured_3dmm.jpg', (image_eval * 255).astype(np.uint8))
-
-
-if __name__ == '__main__':
-    main()
+    return image * 255
