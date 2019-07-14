@@ -7,6 +7,8 @@ ARG PYTHON_VERSION
 FROM nvidia/cudagl:${CUDA_BASE_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 MAINTAINER Domhnall Boyle (domhnallboyle@gmail.com)
 
+# python3.7
+
 ARG CUDA_BASE_VERSION
 ARG UBUNTU_VERSION
 ARG CUDNN_VERSION
@@ -27,13 +29,18 @@ ENV TENSORFLOW_VERSION=${TENSORFLOW_VERSION}
 
 # install apt dependencies
 RUN apt-get update && apt-get install -y \
-	python3.7 \
-	python3-pip \
 	git \
 	vim \
-	wget
+	wget \
+	software-properties-common \
+	curl
 
-RUN python3.7 -m pip install -U pip
+# install python3.7 and pip
+RUN apt-add-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y python3.7 && \
+    ln -s /usr/bin/python3.7 /usr/bin/python && \
+    curl https://bootstrap.pypa.io/get-pip.py | python
 
 # install newest cmake version
 RUN apt-get purge cmake && cd ~ && wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5.tar.gz && tar -xvf cmake-3.14.5.tar.gz
@@ -46,12 +53,16 @@ RUN apt-get install -y --no-install-recommends \
 RUN apt-mark hold libcudnn7 && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
-RUN pip3.7 install tensorflow-gpu==$TENSORFLOW_VERSION
+RUN python -m pip install tensorflow-gpu==$TENSORFLOW_VERSION
 
 # install dirt
 ENV CUDAFLAGS='-DNDEBUG=1'
-RUN cd ~ && git clone https://github.com/pmh47/dirt.git && \
- 	pip3.7 install dirt/
+RUN cd ~ && git clone https://github.com/zhangxuan1918/dirt.git && \
+ 	python -m pip install dirt/
 
 # run dirt test command
-RUN python3.7 ~/dirt/tests/square_test.py
+RUN python ~/dirt/tests/square_test.py
+
+# install requirement
+ADD requirements.txt .
+RUN python -m pip install -r requirements.txt

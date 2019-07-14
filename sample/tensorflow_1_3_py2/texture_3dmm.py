@@ -73,11 +73,11 @@ def process_uv(uv_coords, uv_h=256, uv_w=256):
 
 
 def main():
-    bfm = MorphabelModel('../examples/Data/BFM/Out/BFM.mat')
+    bfm = MorphabelModel('../../examples/Data/BFM/Out/BFM.mat')
     # --load mesh data
     pic_name = 'IBUG_image_008_1_0'
     # pic_name = 'IBUG_image_014_01_2'
-    mat_filename = '../examples/Data/{0}.mat'.format(pic_name)
+    mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     mat_data = sio.loadmat(mat_filename)
     sp = mat_data['Shape_Para']
     ep = mat_data['Exp_Para']
@@ -92,18 +92,12 @@ def main():
     norm = mesh.render.generate_vertex_norm(vertices=vertices, triangles=bfm.triangles,
                                             nver=bfm.nver, ntri=bfm.ntri)
     colors = bfm.generate_tex_color_xuan(tex, cp, ip, norm)
+    colors = np.clip(colors / 255., 0., 1.)
+    colors = np.asarray(colors, dtype=np.float32)
 
     triangles = bfm.triangles
 
-    # get uv map
-    uv_coords = face3d.morphable_model.load.load_uv_coords('../examples/Data/BFM/Out/BFM_UV.mat')
-    uv_coords = process_uv(uv_coords, frame_height, frame_width)
-    uv_texture_map = mesh.render.render_colors(uv_coords, triangles, colors, frame_height, frame_width, c=3)
-    uv_texture_map = np.clip(uv_texture_map / np.max(uv_texture_map), 0, 1)
-    uv_texture_map = np.asarray(uv_texture_map, dtype=np.float32)
-    uv_coords[:, 0] /= frame_width
-    uv_coords[:, 1] /= frame_height
-    uv_coords = uv_coords[:, :2]
+    # colors = colors / np.max(colors)
 
     pp = mat_data['Pose_Para']
     s = pp[0, 6]
@@ -116,7 +110,6 @@ def main():
     transformed_vertices[:, 0] = transformed_vertices[:, 0] * 2 / frame_width - 1
     transformed_vertices[:, 1] = transformed_vertices[:, 1] * 2 / frame_height - 1
     transformed_vertices[:, 2] = -transformed_vertices[:, 2] / np.max(np.abs(transformed_vertices[:, 2]))
-
     transformed_vertices = np.asarray(transformed_vertices, dtype=np.float32)
 
     # Convert vertices to homogeneous coordinates
@@ -126,34 +119,18 @@ def main():
     ], axis=1)
 
     # Render the G-buffer channels (mask, UVs, and normals at each pixel) needed for deferred shading
-    gbuffer_mask = dirt.rasterise(
-        vertices=transformed_vertices,
-        faces=triangles,
-        vertex_colors=tf.ones_like(transformed_vertices[:, :1]),
-        background=tf.zeros([frame_height, frame_width, 1]),
-        width=frame_width, height=frame_height, channels=1
-    )[..., 0]
-    background_value = -1.e4
-    gbuffer_vertex_uvs = dirt.rasterise(
-        vertices=transformed_vertices,
-        faces=triangles,
-        vertex_colors=tf.concat([uv_coords, tf.zeros_like(uv_coords[:, :1])], axis=1),
-        background=tf.ones([frame_height, frame_width, 3]) * background_value,
+    image = dirt.rasterise(
+        vertices=transformed_vertices,  # (24, 4)
+        faces=triangles.tolist(),  # [[]]
+        vertex_colors=colors,
+        background=tf.zeros([frame_height, frame_width, 3]),
         width=frame_width, height=frame_height, channels=3
-    )[..., :2]
-
-    # Dilate the normals and UVs to ensure correct gradients on the silhouette
-    gbuffer_mask = gbuffer_mask[:, :, None]
-    gbuffer_vertex_uvs = gbuffer_vertex_uvs * gbuffer_mask
-
-    # Calculate the colour buffer, by sampling the texture according to the rasterised UVs
-    pixels = gbuffer_mask * sample_texture(uv_texture_map,
-                                           uvs_to_pixel_indices(gbuffer_vertex_uvs, tf.shape(uv_texture_map)[:2]))
+    )
 
     session = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
     with session.as_default():
-        pixels_eval = pixels.eval()
-        imageio.imsave('textured_3dmm2.jpg', (pixels_eval * 255).astype(np.uint8))
+        image_eval = image.eval()
+        imageio.imsave('textured_3dmm.jpg', (image_eval * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':

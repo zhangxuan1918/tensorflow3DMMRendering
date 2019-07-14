@@ -1,14 +1,11 @@
 # This demonstrates using Dirt for textured rendering with a UV map
 
-import os
+import dirt
 import imageio
 import numpy as np
-import tensorflow as tf
 import scipy.io as sio
-import dirt
-import dirt.matrices as matrices
-import dirt.lighting as lighting
-import face3d
+import tensorflow as tf
+
 from face3d.morphable_model import MorphabelModel
 
 frame_width, frame_height = 450, 450
@@ -127,10 +124,8 @@ def main():
         width=frame_width, height=frame_height, channels=3
     )
 
-    session = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
-    with session.as_default():
-        image_eval = image.eval()
-        imageio.imsave('textured_3dmm.jpg', (image_eval * 255).astype(np.uint8))
+    image_eval = image.numpy()
+    imageio.imsave('./textured_3dmm.jpg', (image_eval * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':
