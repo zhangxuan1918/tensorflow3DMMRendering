@@ -66,3 +66,4 @@ RUN python ~/dirt/tests/square_test.py
 # install requirement
 ADD requirements.txt .
 RUN python -m pip install -r requirements.txt
+RUN rm requirements.txt

@@ -27,13 +27,11 @@ ENV TENSORFLOW_VERSION=${TENSORFLOW_VERSION}
 
 # install apt dependencies
 RUN apt-get update && apt-get install -y \
-	python2.7 \
+	python \
 	python-pip \
 	git \
 	vim \
 	wget
-
-RUN python2.7 -m pip install -U pip
 
 # install newest cmake version
 RUN apt-get purge cmake && cd ~ && wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5.tar.gz && tar -xvf cmake-3.14.5.tar.gz
@@ -46,16 +44,17 @@ RUN apt-get install -y --no-install-recommends \
 RUN apt-mark hold libcudnn7 && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
-RUN pip2.7 install tensorflow-gpu==$TENSORFLOW_VERSION
+RUN pip install tensorflow-gpu==$TENSORFLOW_VERSION
 
 # install dirt
 ENV CUDAFLAGS='-DNDEBUG=1'
 RUN cd ~ && git clone https://github.com/pmh47/dirt.git && \
- 	pip2.7 install dirt/
+ 	pip install dirt/
 
 # run dirt test command
-RUN python2.7 ~/dirt/tests/square_test.py
+RUN python ~/dirt/tests/square_test.py
 
 # install requirement
 ADD requirements.txt .
-RUN pip2.7 install -r requirements.txt
+RUN pip install -r requirements.txt
+RUN rm requirements.txt
