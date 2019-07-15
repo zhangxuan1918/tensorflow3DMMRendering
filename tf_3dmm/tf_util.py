@@ -1,6 +1,7 @@
 import tensorflow as tf
 from typing import Any
 
+
 def get_shape(tensor):
     static_shape = tensor.shape.as_list()
     dynamic_shape = tf.unstack(tf.shape(tensor))

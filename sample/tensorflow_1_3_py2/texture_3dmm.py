@@ -81,7 +81,9 @@ def main():
     mat_data = sio.loadmat(mat_filename)
     sp = mat_data['Shape_Para']
     ep = mat_data['Exp_Para']
+
     vertices = bfm.generate_vertices(sp, ep)
+    triangles = bfm.triangles
 
     tp = mat_data['Tex_Para']
     tex = bfm.generate_tex_xuan(tex_para=tp)
@@ -91,11 +93,10 @@ def main():
     import face3d.mesh_numpy as mesh
     norm = mesh.render.generate_vertex_norm(vertices=vertices, triangles=bfm.triangles,
                                             nver=bfm.nver, ntri=bfm.ntri)
+
     colors = bfm.generate_tex_color_xuan(tex, cp, ip, norm)
     colors = np.clip(colors / 255., 0., 1.)
     colors = np.asarray(colors, dtype=np.float32)
-
-    triangles = bfm.triangles
 
     # colors = colors / np.max(colors)
 
