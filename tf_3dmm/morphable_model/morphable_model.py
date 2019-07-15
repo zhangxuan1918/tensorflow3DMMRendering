@@ -31,36 +31,36 @@ class TfMorphableModel(object):
 
     def __init__(self, model_path, model_type='BFM'):
         if model_type == 'BFM':
-            self.model = load_BFM(model_path)
+            model = load_BFM(model_path)
         else:
             print('only BFM09 is supported')
             raise Exception('model_type={0} is not supported; only BFM09 is supported'.format(
-                self.model
+                model_type
             ))
         # 3dmm model
-        self.shape_pc = tf.constant(self.model['shapePC'], dtype=tf.float32)
-        self.shape_mu = tf.constant(self.model['shapeMU'], dtype=tf.float32)
-        self.shape_ev = tf.constant(self.model['shapeEV'], dtype=tf.float32)
+        self.shape_pc = tf.constant(model['shapePC'], dtype=tf.float32)
+        self.shape_mu = tf.constant(model['shapeMU'], dtype=tf.float32)
+        self.shape_ev = tf.constant(model['shapeEV'], dtype=tf.float32)
 
-        self.tex_pc = tf.constant(self.model['texPC'], dtype=tf.float32)
-        self.tex_mu = tf.constant(self.model['texMU'], dtype=tf.float32)
-        self.tex_ev = tf.constant(self.model['texEV'], dtype=tf.float32)
+        self.tex_pc = tf.constant(model['texPC'], dtype=tf.float32)
+        self.tex_mu = tf.constant(model['texMU'], dtype=tf.float32)
+        self.tex_ev = tf.constant(model['texEV'], dtype=tf.float32)
 
-        self.exp_pc = tf.constant(self.model['expPC'], dtype=tf.float32)
-        self.exp_mu = tf.constant(self.model['expMU'], dtype=tf.float32)
-        self.exp_ev = tf.constant(self.model['expEV'], dtype=tf.float32)
+        self.exp_pc = tf.constant(model['expPC'], dtype=tf.float32)
+        self.exp_mu = tf.constant(model['expMU'], dtype=tf.float32)
+        self.exp_ev = tf.constant(model['expEV'], dtype=tf.float32)
+
+        self.triangles = tf.constant(model['tri'], dtype=tf.int32)
+        self.triangles_mouth = tf.constant(model['tri_mouth'], dtype=tf.int32)
+        self.full_triangles = tf.concat([self.triangles, self.triangles_mouth], axis=0)
 
         # fixed attributes
-        self.n_vertices = tf.divide(self.shape_pc.shape[0], 3)
+        self.n_vertices = self.shape_pc.shape[0] // 3
         self.n_triangles = self.triangles.shape[0]
         self.n_shape_para = self.shape_pc.shape[1]
         self.n_exp_para = self.exp_pc.shape[1]
         self.n_tex_para = self.tex_mu.shape[1]
-        self.kpt_ind = tf.constant(self.model['kpt_ind'], dtype=tf.int32)
-
-        self.triangles = tf.constant(self.model['tri'], dtype=tf.float32)
-        self.triangles_mouth = tf.constant(self.model['tri_moth'], dtype=tf.float32)
-        self.full_triangles = tf.stack([self.triangles, self.triangles_mouth])
+        self.kpt_ind = tf.constant(model['kpt_ind'], dtype=tf.int32)
 
     def get_landmark_indices(self):
         return self.kpt_ind
@@ -76,9 +76,9 @@ class TfMorphableModel(object):
         assert is_tf_expression(shape_param) and is_tf_expression(exp_param)
 
         vertices = self.shape_mu + tf.linalg.matmul(self.shape_pc, shape_param) + tf.linalg.matmul(self.exp_pc, exp_param)
-        vertices = tf.transpose(tf.reshape(vertices, (3, self.n_vertices)))
+        vertices = tf.reshape(vertices, (self.n_vertices, 3))
 
-        tf.debugging.assert_shapes((self.n_vertices, 3), vertices)
+        tf.debugging.assert_shapes({vertices: (self.n_vertices, 3)})
         return vertices
 
     def _get_texture(self, tex_param):
@@ -91,9 +91,9 @@ class TfMorphableModel(object):
         assert is_tf_expression(tex_param)
 
         tex = self.tex_mu + tf.linalg.matmul(self.tex_pc, tex_param)
-        tex = tf.transpose(tf.reshape(tex, (3, self.n_vertices)))
+        tex = tf.reshape(tex, (self.n_vertices, 3))
 
-        tf.debugging.assert_shapes((self.n_vertices, 3), tex)
+        tf.debugging.assert_shapes({tex: (self.n_vertices, 3)})
         return tex
 
     def _get_color(self, color_param):
@@ -109,14 +109,6 @@ class TfMorphableModel(object):
 
         assert is_tf_expression(color_param)
 
-        gain_r = color_param[0, 0]
-        gain_g = color_param[0, 1]
-        gain_b = color_param[0, 2]
-
-        offset_r = color_param[0, 3]
-        offset_g = color_param[0, 4]
-        offset_b = color_param[0, 5]
-
         c = color_param[0, 6]
 
         M = tf.constant(
@@ -126,12 +118,12 @@ class TfMorphableModel(object):
             shape=(3, 3)
         )
 
-        g = tf.linalg.tensor_diag([gain_r, gain_g, gain_b])
-        o = tf.constant([offset_r, offset_g, offset_b], shape=(1, 3))
+        g = tf.linalg.tensor_diag(color_param[0, 0:3])
+        o = tf.reshape(color_param[0, 3:6], (1, 3))
         # o matrix of shape(n_vertices, 3)
         o = tf.tile(o, [self.n_vertices, 1])
 
-        tf.debugging.assert_shapes((self.n_vertices, 1), o)
+        tf.debugging.assert_shapes({o: (self.n_vertices, 3)})
 
         return o, M, g, c
 
@@ -143,23 +135,15 @@ class TfMorphableModel(object):
         """
         assert is_tf_expression(illum_param)
 
-        amb_r = illum_param[0, 0]
-        amb_g = illum_param[0, 1]
-        amb_b = illum_param[0, 2]
-
-        dir_r = illum_param[0, 3]
-        dir_g = illum_param[0, 4]
-        dir_b = illum_param[0, 5]
-
         thetal = illum_param[0, 6]
         phil = illum_param[0, 7]
         ks = illum_param[0, 8]
         v = illum_param[0, 9]
 
-        amb = tf.linalg.diag([amb_r, amb_g, amb_b])
-        dirt = tf.linalg.diag([dir_r, dir_g, dir_b])
+        amb = tf.linalg.diag(illum_param[0, 0:3])
+        dirt = tf.linalg.diag(illum_param[0, 3:6])
 
-        l = tf.constant([np.cos(thetal) * np.sin(phil), np.sin(thetal), np.cos(thetal) * np.cos(phil)], dtype=tf.float32)
+        l = tf.Variable([tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)], dtype=tf.float32)
         h = l + tf.constant([0, 0, 1], dtype=tf.float32)
         h = h / tf.sqrt(tf.reduce_sum(tf.square(h)))
 
@@ -185,9 +169,9 @@ class TfMorphableModel(object):
         o, M, g, c = self._get_color(color_param=color_param)
         h, ks, v, amb, dirt, l = self._get_illum(illum_param=illum_param)
         # n_l of shape (n_ver, 1)
-        n_l = tf.clip_by_value(tf.linalg.matmul(vertex_norm, l), 0)
+        n_l = tf.maximum(tf.linalg.matmul(vertex_norm, l), 0)
         # n_h of shape (n_ver, 1)
-        n_h = tf.clip_by_value(tf.linalg.matmul(vertex_norm, h), 0)
+        n_h = tf.maximum(tf.linalg.matmul(vertex_norm, h), 0)
         # n_l of shape (n_ver, 3)
         n_l = tf.tile(n_l, [1, 3])
         # n_h of shape (n_ver, 3)
@@ -201,109 +185,32 @@ class TfMorphableModel(object):
         CT = tf.math.multiply(g, c * tf.eye(3) + (1 - c) * M)
         vertex_colors = tf.linalg.matmul(L, CT) + o
 
-        tf.debugging.assert_shapes((self.n_vertices, 3), vertex_colors)
+        tf.debugging.assert_shapes({vertex_colors: (self.n_vertices, 3)})
         return vertex_colors
-
-    # def render_3dmm(self, shape_param, exp_param, tex_param, color_param, illum_param,
-    #                 pose_param, w=224, h=224):
-    #     """
-    #     render 3dmm to image
-    #     :param shape_param: (n_shape_para, 1)
-    #     :param exp_param:   (n_exp_para, 1)
-    #     :param tex_param:   (n_tex_para, 1)
-    #     :param color_param: (1, n_color_param)
-    #     :param illum_param: (1, n_illum_param)
-    #     :param pose_param:  (1, n_pose_param)
-    #     :param w:
-    #     :param h:
-    #     :return:
-    #     """
-    #     vertices = self.get_vertices(shape_param=shape_param, exp_param=exp_param)
-    #     texture = self._get_texture(tex_param=tex_param)
-    #
-    #     vertex_norm = mesh.render.generate_vertex_norm(
-    #         vertices=vertices,
-    #         triangles=self.triangles,
-    #         n_vertices=self.n_vertices,
-    #         n_triangles=self.n_triangles)
-    #
-    #     tex_color = self.get_vertex_colors(
-    #         tex=texture,
-    #         color_param=color_param,
-    #         illum_param=illum_param,
-    #         vertex_norm=vertex_norm)
-    #
-    #     scale = pose_param[0, 6]
-    #     angles = pose_param[0, 0:3]
-    #     translate = pose_param[0, 3:6]
-    #
-    #     transformed_vertices = self.transform_3ddfa(
-    #         vertices=vertices,
-    #         scale=scale,
-    #         angles=angles,
-    #         t3d=translate)
-    #
-    #     image_vertices = mesh.transform.to_image(
-    #         vertices=transformed_vertices,
-    #         h=h,
-    #         w=w)
-    #     image = mesh.render.render_colors(
-    #         vertices=image_vertices,
-    #         triangles=self.triangles,
-    #         colors=tex_color,
-    #         h=h,
-    #         w=w)
-    #     return image
 
 
 if __name__ == '__main__':
-    bfm = MorphableModel('G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\BFM\BFM.mat')
 
     pic_name = 'IBUG_image_008_1_0'
-    mat_filename = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_samples/{0}.mat'.format(pic_name)
+    mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     import scipy.io as sio
-
     mat_data = sio.loadmat(mat_filename)
 
-    image_filename = 'G:\PycharmProjects\FaceFusion\project_code\data\\3dmm\\300W_LP_samples/{0}.jpg'.format(pic_name)
-    with open(image_filename, 'rb') as file:
-        img = Image.open(file)
-        img_np = np.asarray(img, dtype='int32')
-        h, w, _ = img_np.shape
-    shape_param = mat_data['Shape_Para']
-    exp_param = mat_data['Exp_Para']
-    tex_param = mat_data['Tex_Para']
-    color_param = mat_data['Color_Para']
-    illum_param = mat_data['Illum_Para']
-    pose_param = mat_data['Pose_Para']
+    shape_param = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
+    exp_param = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)
+    tex_param = tf.constant(mat_data['Tex_Para'], dtype=tf.float32)
+    color_param = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
+    illum_param = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
+    pose_param = tf.constant(mat_data['Pose_Para'], dtype=tf.float32)
 
-    image = bfm.render_3dmm(
+    tf_bfm = TfMorphableModel('../../examples/Data/BFM/Out/BFM.mat')
+
+    vertices = tf_bfm.get_vertices(
         shape_param=shape_param,
-        exp_param=exp_param,
-        tex_param=tex_param,
-        color_param=color_param,
-        illum_param=illum_param,
-        pose_param=pose_param,
-        h=h,
-        w=w
+        exp_param=exp_param
     )
 
-    import matplotlib.pyplot as plt
+    from dirt import lighting
 
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 3, 1)
-    ax.imshow(img_np)
-
-    image = np.asarray(np.round(image), dtype=np.int).clip(0, 255)
-    ax2 = fig.add_subplot(1, 3, 2)
-    ax2.imshow(image)
-
-    image_mask = image > 0
-    img_np_mx = np.ma.masked_array(img_np, mask=image_mask, fill_value=0)
-    image_overlay = img_np_mx + image
-    ax3 = fig.add_subplot(1, 3, 3)
-    ax3.imshow(image_overlay)
-
-    fig.show()
-
-    xxx = 1
+    vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
+    texture = tf_bfm.get_vertex_colors(tex_param, color_param, illum_param, -vertex_norm)

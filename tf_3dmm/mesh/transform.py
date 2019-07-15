@@ -77,7 +77,7 @@ def rotate(vertices, angles_rad):
     rotate_matrix = angle_to_matrix(angles_rad)
     rotated_vertices = tf.linalg.matmul(vertices, tf.transpose(rotate_matrix))
 
-    tf.debugging.assert_shapes(vertices.shape, rotated_vertices)
+    tf.debugging.assert_shapes({rotated_vertices: vertices.shape})
 
     return rotated_vertices
 

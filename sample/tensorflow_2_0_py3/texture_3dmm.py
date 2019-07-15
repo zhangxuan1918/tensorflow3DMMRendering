@@ -71,7 +71,7 @@ def process_uv(uv_coords, uv_h=256, uv_w=256):
 
 
 def main():
-    bfm = MorphabelModel('../../examples/Data/BFM/Out/BFM.mat')
+    bfm = tfMorphabelModel('../../examples/Data/BFM/Out/BFM.mat')
     # --load mesh data
     pic_name = 'IBUG_image_008_1_0'
     # pic_name = 'IBUG_image_014_01_2'
