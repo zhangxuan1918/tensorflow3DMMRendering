@@ -9,7 +9,7 @@ from dirt import lighting
 
 from tf_3dmm.mesh.transform import affine_transform
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
-from tf_3dmm import mesh
+
 frame_width, frame_height = 450, 450
 
 
