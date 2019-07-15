@@ -8,7 +8,7 @@ This project uses [dirt](https://github.com/pmh47/dirt) to render 3DMM model in 
  
 ### Tensorflow 2.0 && python 3.7
 
-[dockerfile](dockerfiles/tf3_0_py3/Dockerfile)
+[dockerfile](dockerfiles/tf2_0_py3/Dockerfile)
 
 ### Tensorflow 1.3 && python 2.7
 
