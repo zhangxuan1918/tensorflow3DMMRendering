@@ -2,8 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-from PIL import Image
 import tensorflow as tf
 
 from tf_3dmm.morphable_model.morphable_model_util import load_BFM
@@ -75,7 +73,8 @@ class TfMorphableModel(object):
 
         assert is_tf_expression(shape_param) and is_tf_expression(exp_param)
 
-        vertices = self.shape_mu + tf.linalg.matmul(self.shape_pc, shape_param) + tf.linalg.matmul(self.exp_pc, exp_param)
+        vertices = self.shape_mu + tf.linalg.matmul(self.shape_pc, shape_param) + tf.linalg.matmul(self.exp_pc,
+                                                                                                   exp_param)
         vertices = tf.reshape(vertices, (self.n_vertices, 3))
 
         tf.debugging.assert_shapes({vertices: (self.n_vertices, 3)})
@@ -143,7 +142,9 @@ class TfMorphableModel(object):
         amb = tf.linalg.diag(illum_param[0, 0:3])
         dirt = tf.linalg.diag(illum_param[0, 3:6])
 
-        l = tf.Variable([tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)], dtype=tf.float32)
+        l = tf.Variable(
+            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
+            dtype=tf.float32)
         h = l + tf.constant([0, 0, 1], dtype=tf.float32)
         h = h / tf.sqrt(tf.reduce_sum(tf.square(h)))
 
@@ -190,10 +191,10 @@ class TfMorphableModel(object):
 
 
 if __name__ == '__main__':
-
     pic_name = 'IBUG_image_008_1_0'
     mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     import scipy.io as sio
+
     mat_data = sio.loadmat(mat_filename)
 
     shape_param = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)

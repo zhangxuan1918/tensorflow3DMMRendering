@@ -94,7 +94,7 @@ def main():
     norm = mesh.render.generate_vertex_norm(vertices=vertices, triangles=bfm.triangles,
                                             nver=bfm.nver, ntri=bfm.ntri)
 
-    colors = bfm.generate_tex_color_xuan(tex, cp, ip, norm.numpy())
+    colors = bfm.generate_tex_color_xuan(tex, cp, ip, norm)
     colors = np.clip(colors / 255., 0., 1.)
     colors = np.asarray(colors, dtype=np.float32)
 

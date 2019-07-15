@@ -26,38 +26,38 @@ def angle_to_matrix(angles_rad, dtype=tf.float32):
 
     x, y, z = angles_rad[0], angles_rad[1], angles_rad[2]
     # rotation matrix on x axis
-    rotate_x = tf.constant(
+    rotate_x = tf.Variable(
         [
             [1, 0, 0],
-            [0, tf.math.cos(x), -tf.math.sin(x)],
-            [0, tf.math.sin(x), tf.math.cos(x)]
+            [0, tf.math.cos(x), tf.math.sin(x)],
+            [0, -tf.math.sin(x), tf.math.cos(x)]
         ],
         dtype=dtype
     )
 
     # rotation matrix on y axis
-    rotate_y = tf.constant(
+    rotate_y = tf.Variable(
         [
-            [tf.math.cos(y), 0, tf.math.sin(y)],
+            [tf.math.cos(y), 0, -tf.math.sin(y)],
             [0, 1, 0],
-            [-tf.math.sin(y), 0, tf.math.cos(y)]
+            [tf.math.sin(y), 0, tf.math.cos(y)]
         ],
         dtype=dtype
     )
 
     # rotation matrix on z axis
-    rotate_z = tf.constant(
+    rotate_z = tf.Variable(
         [
-            [tf.math.cos(z), -tf.math.sin(z), 0],
-            [tf.math.sin(z), tf.math.cos(z), 0],
+            [tf.math.cos(z), tf.math.sin(z), 0],
+            [-tf.math.sin(z), tf.math.cos(z), 0],
             [0, 0, 1]
         ],
         dtype=dtype
     )
 
     # rotation matrix
-    rotate_xyz = tf.linalg.matmul(rotate_z, tf.linalg.matmul(rotate_y, rotate_x))
-
+    # rotate_xyz = tf.linalg.matmul(rotate_z, tf.linalg.matmul(rotate_y, rotate_x))
+    rotate_xyz = tf.linalg.matmul(tf.linalg.matmul(rotate_x, rotate_y), rotate_z)
     return rotate_xyz
 
 
