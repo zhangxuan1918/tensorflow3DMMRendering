@@ -25,6 +25,43 @@ def render(
     assert is_tf_expression(color_param)
     assert is_tf_expression(illum_param)
 
+    return render_2(
+        angles_grad=pose_param[0, 0:3],
+        scaling=pose_param[0, 6],
+        t3d=pose_param[0, 3:6],
+        shape_param=shape_param,
+        exp_param=exp_param,
+        tex_param=tex_param,
+        color_param=color_param,
+        illum_param=illum_param,
+        frame_width=frame_width,
+        frame_height=frame_height,
+        tf_bfm=tf_bfm
+    )
+
+
+def render_2(
+        angles_grad,
+        scaling,
+        t3d,
+        shape_param,
+        exp_param,
+        tex_param,
+        color_param,
+        illum_param,
+        frame_width: int,
+        frame_height: int,
+        tf_bfm: TfMorphableModel
+):
+    assert is_tf_expression(angles_grad)
+    assert is_tf_expression(scaling)
+    assert is_tf_expression(t3d)
+    assert is_tf_expression(shape_param)
+    assert is_tf_expression(exp_param)
+    assert is_tf_expression(tex_param)
+    assert is_tf_expression(color_param)
+    assert is_tf_expression(illum_param)
+
     vertices = tf_bfm.get_vertices(shape_param=shape_param, exp_param=exp_param)
     vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
 
@@ -39,9 +76,9 @@ def render(
 
     transformed_vertices = affine_transform(
         vertices=vertices,
-        scaling=pose_param[0, 6],
-        angles_rad=pose_param[0, 0:3],
-        t3d=pose_param[0, 3:6]
+        scaling=scaling,
+        angles_rad=angles_grad,
+        t3d=t3d
     )
     transformed_vertices_x = transformed_vertices[:, 0] * 2 / frame_width - 1
     transformed_vertices_y = transformed_vertices[:, 1] * 2 / frame_height - 1
@@ -97,6 +134,20 @@ if __name__ == '__main__':
         frame_width=450,
         tf_bfm=tf_bfm
     )
+
+    # image = render_2(
+    #     angles_grad=pp[0, 0:3],
+    #     t3d=pp[0, 3:6],
+    #     scaling=pp[0, 6],
+    #     shape_param=sp,
+    #     exp_param=ep,
+    #     tex_param=tp,
+    #     color_param=cp,
+    #     illum_param=ip,
+    #     frame_height=450,
+    #     frame_width=450,
+    #     tf_bfm=tf_bfm
+    # )
 
     import imageio
     import numpy as np
