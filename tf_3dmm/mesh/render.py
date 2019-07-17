@@ -25,46 +25,19 @@ def render(
     assert is_tf_expression(color_param)
     assert is_tf_expression(illum_param)
 
-    vertices = tf_bfm.get_vertices(shape_param=shape_param, exp_param=exp_param)
-    vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
-
-    colors = tf_bfm.get_vertex_colors(
+    return render_2(
+        angles_grad=pose_param[0, 0:3],
+        scaling=pose_param[0, 6],
+        t3d=pose_param[0, 3:6],
+        shape_param=shape_param,
+        exp_param=exp_param,
         tex_param=tex_param,
         color_param=color_param,
         illum_param=illum_param,
-        vertex_norm=-vertex_norm
+        frame_width=frame_width,
+        frame_height=frame_height,
+        tf_bfm=tf_bfm
     )
-
-    colors = tf.clip_by_value(colors / 255., 0., 1.)
-
-    transformed_vertices = affine_transform(
-        vertices=vertices,
-        scaling=pose_param[0, 6],
-        angles_rad=pose_param[0, 0:3],
-        t3d=pose_param[0, 3:6]
-    )
-    transformed_vertices_x = transformed_vertices[:, 0] * 2 / frame_width - 1
-    transformed_vertices_y = transformed_vertices[:, 1] * 2 / frame_height - 1
-    transformed_vertices_z = -transformed_vertices[:, 2] / tf.reduce_max(tf.abs(transformed_vertices[:, 2]))
-
-    # Convert vertices to homogeneous coordinates
-    transformed_vertices = tf.concat([
-        tf.expand_dims(transformed_vertices_x, axis=1),
-        tf.expand_dims(transformed_vertices_y, axis=1),
-        tf.expand_dims(transformed_vertices_z, axis=1),
-        tf.ones_like(transformed_vertices[:, -1:])
-    ], axis=1)
-
-    # Render the G-buffer
-    image = dirt.rasterise(
-        vertices=transformed_vertices,
-        faces=tf_bfm.triangles,
-        vertex_colors=colors,
-        background=tf.zeros([frame_height, frame_width, 3]),
-        width=frame_width, height=frame_height, channels=3
-    )
-
-    return image * 255
 
 
 def render_2(
@@ -150,22 +123,8 @@ if __name__ == '__main__':
     ip = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
     pp = tf.constant(mat_data['Pose_Para'], dtype=tf.float32)
 
-    # image = render(
-    #     pose_param=pp,
-    #     shape_param=sp,
-    #     exp_param=ep,
-    #     tex_param=tp,
-    #     color_param=cp,
-    #     illum_param=ip,
-    #     frame_height=450,
-    #     frame_width=450,
-    #     tf_bfm=tf_bfm
-    # )
-
-    image = render_2(
-        angles_grad=pp[0, 0:3],
-        t3d=pp[0, 3:6],
-        scaling=pp[0, 6],
+    image = render(
+        pose_param=pp,
         shape_param=sp,
         exp_param=ep,
         tex_param=tp,
@@ -175,6 +134,20 @@ if __name__ == '__main__':
         frame_width=450,
         tf_bfm=tf_bfm
     )
+
+    # image = render_2(
+    #     angles_grad=pp[0, 0:3],
+    #     t3d=pp[0, 3:6],
+    #     scaling=pp[0, 6],
+    #     shape_param=sp,
+    #     exp_param=ep,
+    #     tex_param=tp,
+    #     color_param=cp,
+    #     illum_param=ip,
+    #     frame_height=450,
+    #     frame_width=450,
+    #     tf_bfm=tf_bfm
+    # )
 
     import imageio
     import numpy as np
