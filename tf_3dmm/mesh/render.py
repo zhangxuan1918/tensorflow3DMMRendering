@@ -115,9 +115,6 @@ if __name__ == '__main__':
     sp = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
     ep = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)
 
-    vertices = tf_bfm.get_vertices(sp, ep)
-    triangles = tf_bfm.triangles
-
     tp = tf.constant(mat_data['Tex_Para'], dtype=tf.float32)
     cp = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
     ip = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
