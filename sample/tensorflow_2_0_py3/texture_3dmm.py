@@ -26,7 +26,7 @@ def main():
     vertices = tf_bfm.get_vertices(sp, ep)
     triangles = tf_bfm.triangles
 
-    tp = tf.constant(mat_data['Tex_Para'], dtype=tf.float32)
+    tp = tf.constant(mat_data['Tex_Para'][:40, :], dtype=tf.float32)
     cp = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
     ip = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
 

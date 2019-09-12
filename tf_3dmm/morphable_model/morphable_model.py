@@ -89,7 +89,8 @@ class TfMorphableModel(object):
 
         assert is_tf_expression(tex_param)
 
-        tex = self.tex_mu + tf.linalg.matmul(self.tex_pc, tex_param)
+        indx = tex_param.shape[0]
+        tex = self.tex_mu + tf.linalg.matmul(self.tex_pc[:, :indx], tex_param)
         tex = tf.reshape(tex, (self.n_vertices, 3))
 
         tf.debugging.assert_shapes({tex: (self.n_vertices, 3)})
@@ -199,7 +200,7 @@ if __name__ == '__main__':
 
     shape_param = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
     exp_param = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)
-    tex_param = tf.constant(mat_data['Tex_Para'], dtype=tf.float32)
+    tex_param = tf.constant(mat_data['Tex_Para'][:40, :], dtype=tf.float32)
     color_param = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
     illum_param = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
     pose_param = tf.constant(mat_data['Pose_Para'], dtype=tf.float32)
