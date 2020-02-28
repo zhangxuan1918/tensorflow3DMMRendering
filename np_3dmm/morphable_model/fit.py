@@ -2,7 +2,6 @@
 Estimating parameters about vertices: shape para, exp para, pose para(s, R, t)
 '''
 import numpy as np
-from face3d import mesh_numpy
 
 ''' TODO: a clear document. 
 Given: image_points, 3D Model, Camera Matrix(s, R, t2d)

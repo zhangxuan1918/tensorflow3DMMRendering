@@ -16,7 +16,7 @@ frame_width, frame_height = 450, 450
 def main():
     tf_bfm = TfMorphableModel('../../examples/Data/BFM/Out/BFM.mat')
     # --load mesh data
-    pic_name = 'IBUG_image_008_1_0'
+    pic_name = 'image00002'
     # pic_name = 'IBUG_image_014_01_2'
     mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     mat_data = sio.loadmat(mat_filename)
@@ -65,7 +65,7 @@ def main():
     )
 
     image_eval = image.numpy()
-    imageio.imsave('./textured_3dmm.jpg', (image_eval * 255).astype(np.uint8))
+    imageio.imsave('./{0}.jpg'.format(pic_name), (image_eval * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':
