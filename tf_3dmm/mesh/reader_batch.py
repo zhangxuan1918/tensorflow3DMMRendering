@@ -23,12 +23,19 @@ def render_batch(
 
     pose_shape = tf.shape(pose_param)
     if len(pose_shape) == 2:
-        tf.debugging.assert_shapes([(pose_param, (batch_size, tf_bfm.get_num_pose_param()))])
+        tf.debugging.assert_shapes(
+            [(pose_param, (batch_size, tf_bfm.get_num_pose_param()))],
+            message='pose_param shape wrong, dim != ({batch}, {dim})'.format(
+                batch=batch_size, dim=tf_bfm.get_num_pose_param()))
         pose_param = tf.expand_dims(pose_param, 1)
     elif len(pose_shape) == 3:
-        tf.debugging.assert_shapes([(pose_param, (batch_size, 1, tf_bfm.get_num_pose_param()))])
+        tf.debugging.assert_shapes(
+            [(pose_param, (batch_size, 1, tf_bfm.get_num_pose_param()))],
+            message='pose_param shape wrong, dim != ({batch}, 1, {dim})'.format(
+                batch=batch_size, dim=tf_bfm.get_num_pose_param()))
     else:
-        raise ValueError('angles_grad shape wrong, dim != (batch, 1, 3) or (batch, 3)')
+        raise ValueError('pose_param shape wrong, dim != ({batch}, 1, {dim}) or ({batch}, {dim})'.format(
+                batch=batch_size, dim=tf_bfm.get_num_pose_param()))
 
     vertices = tf_bfm.get_vertices_batch(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
     vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
@@ -80,37 +87,49 @@ if __name__ == '__main__':
     tf_bfm = TfMorphableModel(model_path='../../examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
 
     # --load mesh data
-    pic_name = ['image00002', 'IBUG_image_014_01_2']
-    mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
-    mat_data = sio.loadmat(mat_filename)
+    pic_names = ['image00002', 'IBUG_image_014_01_2']
+    shape_param_batch = []
+    exp_param_batch = []
+    tex_param_batch = []
+    color_param_batch = []
+    illum_param_batch = []
+    pose_param_batch = []
 
-    shape_param = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
-    shape_param = tf.expand_dims(shape_param, 0)
-    exp_param = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)
-    exp_param = tf.expand_dims(exp_param, 0)
-    tex_param = tf.constant(mat_data['Tex_Para'][:n_tex_para, :], dtype=tf.float32)
-    tex_param = tf.expand_dims(tex_param, 0)
-    color_param = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
-    color_param = tf.expand_dims(color_param, 0)
-    illum_param = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
-    illum_param = tf.expand_dims(illum_param, 0)
-    pose_param = tf.constant(mat_data['Pose_Para'], dtype=tf.float32)
-    pose_param = tf.expand_dims(pose_param, 0)
+    for pic_name in pic_names:
+        mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
+        mat_data = sio.loadmat(mat_filename)
+
+        shape_param_batch.append(tf.constant(mat_data['Shape_Para'], dtype=tf.float32))
+        exp_param_batch.append(tf.constant(mat_data['Exp_Para'], dtype=tf.float32))
+        tex_param_batch.append(tf.constant(mat_data['Tex_Para'][:n_tex_para, :], dtype=tf.float32))
+        color_param_batch.append(tf.constant(mat_data['Color_Para'], dtype=tf.float32))
+        illum_param_batch.append(tf.constant(mat_data['Illum_Para'], dtype=tf.float32))
+        pose_param_batch.append(tf.constant(mat_data['Pose_Para'], dtype=tf.float32))
+
+    shape_param_batch = tf.stack(shape_param_batch, axis=0)
+    exp_param_batch = tf.stack(exp_param_batch, axis=0)
+    tex_param_batch = tf.stack(tex_param_batch, axis=0)
+    color_param_batch = tf.stack(color_param_batch, axis=0)
+    illum_param_batch = tf.stack(illum_param_batch, axis=0)
+    pose_param_batch = tf.stack(pose_param_batch, axis=0)
+
+    batch_size = len(pic_names)
 
     image = render_batch(
-        pose_param=pose_param,
-        shape_param=shape_param,
-        exp_param=exp_param,
-        tex_param=tex_param,
-        color_param=color_param,
-        illum_param=illum_param,
+        pose_param=pose_param_batch,
+        shape_param=shape_param_batch,
+        exp_param=exp_param_batch,
+        tex_param=tex_param_batch,
+        color_param=color_param_batch,
+        illum_param=illum_param_batch,
         frame_height=450,
         frame_width=450,
         tf_bfm=tf_bfm,
-        batch_size=1
+        batch_size=batch_size
     )
 
     import imageio
     import numpy as np
 
-    imageio.imsave('./rendered_{0}.jpg'.format(pic_name), image[0, :, :, :].numpy().astype(np.uint8))
+    for i, pic_name in enumerate(pic_names):
+        imageio.imsave('./rendered_{0}.jpg'.format(pic_name), image[i, :, :, :].numpy().astype(np.uint8))
