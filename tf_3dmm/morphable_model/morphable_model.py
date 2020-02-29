@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import dirt
 import tensorflow as tf
 
 from tf_3dmm.morphable_model.morphable_model_util import load_BFM
@@ -62,7 +61,11 @@ class TfMorphableModel(object):
         self.n_tex_para = n_tex_para  # 40
         self.n_color_para = 7
         self.n_illum_para = 10
+        self.n_pose_para = 7
         self.kpt_ind = tf.constant(model['kpt_ind'], dtype=tf.int32)
+
+    def get_num_pose_param(self):
+        return self.n_pose_para
 
     def get_landmark_indices(self):
         return self.kpt_ind
@@ -92,7 +95,6 @@ class TfMorphableModel(object):
                    tf.einsum('ij,js->is', self.exp_pc, exp_param)
         vertices = tf.reshape(vertices, (self.n_vertices, 3))
 
-        # tf.debugging.assert_shapes({vertices: (self.n_vertices, 3)})
         return vertices
 
     def get_vertices_batch(self, shape_param, exp_param, batch_size):
@@ -108,20 +110,20 @@ class TfMorphableModel(object):
 
         sp_shape = tf.shape(shape_param)
         if len(sp_shape) == 2:
-            tf.debugging.assert_shapes({shape_param: (batch_size, self.n_shape_para)})
+            tf.debugging.assert_shapes([(shape_param, (batch_size, self.n_shape_para))])
             shape_param = tf.expand_dims(shape_param, 2)
         elif len(sp_shape) == 3:
-            tf.debugging.assert_shapes({shape_param: (batch_size, self.n_shape_para, 1)})
+            tf.debugging.assert_shapes([(shape_param, (batch_size, self.n_shape_para, 1))])
         else:
             raise ValueError(
                 'shape_param shape wrong, dim != (batch, {0}, 1) or (batch, {0})'.format(self.n_shape_para))
 
         ep_shape = tf.shape(exp_param)
         if len(ep_shape) == 2:
-            tf.debugging.assert_shapes({exp_param: (batch_size, self.n_exp_para)})
+            tf.debugging.assert_shapes([(exp_param, (batch_size, self.n_exp_para))])
             shape_param = tf.expand_dims(exp_param, 2)
         elif len(ep_shape) == 3:
-            tf.debugging.assert_shapes({exp_param: (batch_size, self.n_exp_para, 1)})
+            tf.debugging.assert_shapes([(exp_param, (batch_size, self.n_exp_para, 1))])
         else:
             raise ValueError('exp_param shape wrong, dim != (batch, {0}, 1) or (batch, {0})'.format(self.n_exp_para))
 
@@ -129,7 +131,6 @@ class TfMorphableModel(object):
                    tf.einsum('ij,kjs->kis', self.exp_pc, exp_param)
 
         vertices = tf.reshape(vertices, (batch_size, self.n_vertices, 3))
-        # tf.debugging.assert_shapes({vertices: (batch_size, self.n_vertices, 3)})
         return vertices
 
     def _get_texture(self, tex_param):
@@ -144,7 +145,7 @@ class TfMorphableModel(object):
         tex = self.tex_mu + tf.einsum('ij,js->is', self.tex_pc, tex_param)
         tex = tf.reshape(tex, (self.n_vertices, 3))
 
-        tf.debugging.assert_shapes({tex: (self.n_vertices, 3)})
+        tf.debugging.assert_shapes([(tex, (self.n_vertices, 3))])
         return tex
 
     def _get_texture_batch(self, tex_param, batch_size):
@@ -157,10 +158,10 @@ class TfMorphableModel(object):
 
         tp_shape = tf.shape(tex_param)
         if len(tp_shape) == 2:
-            tf.debugging.assert_shapes({tp_shape: (batch_size, self.n_tex_para)})
+            tf.debugging.assert_shapes([(tp_shape, (batch_size, self.n_tex_para))])
             tex_param = tf.expand_dims(tex_param, 2)
         elif len(tp_shape) == 3:
-            tf.debugging.assert_shapes({tex_param: (batch_size, self.n_tex_para, 1)})
+            tf.debugging.assert_shapes([(tex_param, (batch_size, self.n_tex_para, 1))])
         else:
             raise ValueError('tex_param shape wrong, dim != (batch, {0}, 1) or (batch, {0})'.format(self.n_tex_para))
 
@@ -193,7 +194,7 @@ class TfMorphableModel(object):
         # o matrix of shape(n_vertices, 3)
         o = tf.tile(o, [self.n_vertices, 1])
 
-        tf.debugging.assert_shapes({o: (self.n_vertices, 3)})
+        tf.debugging.assert_shapes([(o, (self.n_vertices, 3))])
 
         return o, M, g, 1
 
@@ -216,10 +217,10 @@ class TfMorphableModel(object):
 
         cp_shape = tf.shape(color_param)
         if len(cp_shape) == 2:
-            tf.debugging.assert_shapes({color_param: (batch_size, self.n_color_para)})
+            tf.debugging.assert_shapes([(color_param, (batch_size, self.n_color_para))])
             color_param = tf.expand_dims(color_param, 1)
         elif len(cp_shape) == 3:
-            tf.debugging.assert_shapes({color_param: (batch_size, 1, self.n_color_para)})
+            tf.debugging.assert_shapes([(color_param, (batch_size, 1, self.n_color_para))])
         else:
             raise ValueError(
                 'color_param shape wrong, dim != (batch, 1, {0}) or (batch, {0})'.format(self.n_color_para))
@@ -236,7 +237,7 @@ class TfMorphableModel(object):
         # o matrix of shape(batch, n_vertices, 3)
         o = tf.tile(o, [1, self.n_vertices, 1])
 
-        tf.debugging.assert_shapes({o: (batch_size, self.n_vertices, 3)})
+        tf.debugging.assert_shapes([(o, (batch_size, self.n_vertices, 3))])
 
         return o, M, g, c
 
@@ -292,10 +293,10 @@ class TfMorphableModel(object):
 
         ip_shape = tf.shape(illum_param)
         if len(ip_shape) == 2:
-            tf.debugging.assert_shapes({illum_param: (batch_size, self.n_illum_para)})
+            tf.debugging.assert_shapes([(illum_param, (batch_size, self.n_illum_para))])
             illum_param = tf.expand_dims(illum_param, 1)
         elif len(ip_shape) == 3:
-            tf.debugging.assert_shapes({illum_param: (batch_size, 1, self.n_illum_para)})
+            tf.debugging.assert_shapes([(illum_param, (batch_size, 1, self.n_illum_para))])
         else:
             raise ValueError(
                 'illum_param shape wrong, dim != (batch, 1, {0}) or (batch, {0})'.format(self.n_illum_para))
@@ -307,11 +308,10 @@ class TfMorphableModel(object):
 
         amb = tf.linalg.diag(illum_param[:, 0, 0:3])
         d = tf.linalg.diag(illum_param[:, 0, 3:6])
-        # l = tf.Variable(
-        #     [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
-        #     dtype=tf.float32)
+
+        # l, (batch, 3)
         l = tf.concat(
-            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil) + 1],
+            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
             axis=1)
         h = l + tf.expand_dims(tf.constant([0, 0, 1], dtype=tf.float32), axis=0)
         h = h / tf.sqrt(tf.reduce_sum(tf.square(h), axis=1))
@@ -348,13 +348,13 @@ class TfMorphableModel(object):
 
         # L of shape (n_ver, 3)
         L = tf.linalg.matmul(tex, amb) + tf.linalg.matmul(tf.math.multiply(n_l, tex), dirt) + \
-            ks * tf.math.pow(n_h, tf.expand_dims(v, 2))
+            ks * tf.math.pow(n_h, v)
 
         # CT of shape (3, 3)
         CT = tf.math.multiply(g, c * tf.eye(3) + (1 - c) * M)
         vertex_colors = tf.linalg.matmul(L, CT) + o
 
-        tf.debugging.assert_shapes({vertex_colors: (self.n_vertices, 3)})
+        tf.debugging.assert_shapes([(vertex_colors, (self.n_vertices, 3))])
         return vertex_colors
 
     def get_vertex_colors_batch(self, tex_param, color_param, illum_param, vertex_norm, batch_size):
@@ -407,15 +407,15 @@ class TfMorphableModel(object):
         # c, (batch, 1)
         # tf.tile(c, (1, 3)), (batch, 3)
         # c_expanded, (batch, 3, 3)
-        c_expanded = tf.matrix_diag(tf.tile(c, (1, 3)))
-
+        c_expanded = tf.linalg.diag(tf.tile(c, (1, 3)))
+        nc_expanded = tf.linalg.diag(tf.tile(1-c, (1, 3)))
         # CT of shape (batch, 3, 3)
-        CT = tf.math.multiply(g, c_expanded + tf.einsum('ijk,ks->ijs', 1 - c_expanded, M))
+        CT = tf.math.multiply(g, c_expanded + tf.einsum('ijk,ks->ijs', nc_expanded, M))
 
-        # vertex_colors: (batch, )
+        # vertex_colors: (batch, n_ver, 3)
         vertex_colors = tf.einsum('ijk,iks->ijs', L, CT) + o
 
-        tf.debugging.assert_shapes({vertex_colors: (batch_size, self.n_vertices, 3)})
+        tf.debugging.assert_shapes([(vertex_colors, (batch_size, self.n_vertices, 3))])
         return vertex_colors
 
 
