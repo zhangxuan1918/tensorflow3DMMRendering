@@ -185,7 +185,7 @@ def affine_transform_batch(vertices, scaling, angles_rad, t3d):
         :return:
             transformed vertices: [batch, n_ver, 3]
     """
-    transformed_vertices = scaling * rotate_batch(vertices=vertices, angles_rad=angles_rad) + t3d
+    transformed_vertices = tf.expand_dims(scaling, axis=2) * rotate_batch(vertices=vertices, angles_rad=angles_rad) + t3d
 
     return transformed_vertices
 

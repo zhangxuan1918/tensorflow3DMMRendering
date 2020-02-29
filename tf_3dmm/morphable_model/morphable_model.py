@@ -347,7 +347,7 @@ class TfMorphableModel(object):
             [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
             axis=1)
         h = l + tf.expand_dims(tf.constant([0, 0, 1], dtype=tf.float32), axis=0)
-        h = h / tf.sqrt(tf.reduce_sum(tf.square(h), axis=1))
+        h = h / tf.sqrt(tf.reduce_sum(tf.square(h), axis=1, keepdims=True))
 
         return tf.reshape(h, (batch_size, -1, 1)), ks, v, amb, d, tf.reshape(l, (batch_size, -1, 1))
 
@@ -435,7 +435,7 @@ class TfMorphableModel(object):
 
         # L of shape (batch, n_ver, 3)
         L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex), d) + \
-            tf.expand_dims(ks, 2) * tf.math.pow(n_h, v)  # <-(batch, 1, 1) * (batch, n_ver, 3)
+            tf.expand_dims(ks, axis=2) * tf.math.pow(n_h, tf.expand_dims(v, axis=1))  # <-(batch, 1, 1) * (batch, n_ver, 3)
 
         # c, (batch, 1)
         # tf.tile(c, (1, 3)), (batch, 3)

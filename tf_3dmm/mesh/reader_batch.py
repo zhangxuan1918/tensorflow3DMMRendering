@@ -52,9 +52,9 @@ def render_batch(
 
     transformed_vertices = affine_transform_batch(
         vertices=vertices,
-        scaling=pose_param[:, 0, 6],
+        scaling=pose_param[:, 0, 6:],
         angles_rad=pose_param[:, 0, 0:3],
-        t3d=pose_param[:, 0, 3:6]
+        t3d=pose_param[:, 0:, 3:6]
     )
     transformed_vertices_x = transformed_vertices[:, :, 0] * 2 / frame_width - 1
     transformed_vertices_y = transformed_vertices[:, :, 1] * 2 / frame_height - 1
@@ -71,9 +71,9 @@ def render_batch(
     # Render the G-buffer
     image = dirt.rasterise_batch(
         vertices=transformed_vertices,
-        faces=tf.expand_dims(tf_bfm.triangles, axis=0),
+        faces=tf.tile(tf.expand_dims(tf_bfm.triangles, axis=0), (batch_size, 1, 1)),
         vertex_colors=colors,
-        background=tf.zeros([1, frame_height, frame_width, 3]),
+        background=tf.zeros([batch_size, frame_height, frame_width, 3]),
         width=frame_width, height=frame_height, channels=3
     )
 
