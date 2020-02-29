@@ -207,7 +207,7 @@ class TfMorphableModel(object):
         thus, we remove it from our training data
         :returns:
              o: [batch, n_vertices, 3]
-             M: constant matrix [1, 3, 3]
+             M: constant matrix [3, 3]
              g: diagonal matrix [batch, 3, 3]
              c: [batch, 1]
         """
@@ -219,19 +219,18 @@ class TfMorphableModel(object):
             tf.debugging.assert_shapes({color_param: (batch_size, self.n_color_para)})
             color_param = tf.expand_dims(color_param, 1)
         elif len(cp_shape) == 3:
-            tf.debugging.assert_shapes({cp_shape: (batch_size, 1, self.n_color_para)})
+            tf.debugging.assert_shapes({color_param: (batch_size, 1, self.n_color_para)})
         else:
             raise ValueError(
                 'color_param shape wrong, dim != (batch, 1, {0}) or (batch, {0})'.format(self.n_color_para))
         # c shape: (batch, 1)
-        c = color_param[:, 0, 6]
+        c = color_param[:, :, 6]
         M = tf.constant(
             [[0.3, 0.59, 0.11],
              [0.3, 0.59, 0.11],
              [0.3, 0.59, 0.11]],
             shape=(3, 3)
         )
-        M = tf.expand_dims(1, M)
         g = tf.linalg.diag(color_param[:, 0, 0:3])
         o = tf.reshape(color_param[:, 0, 3:6], (batch_size, 1, 3))
         # o matrix of shape(batch, n_vertices, 3)
@@ -301,10 +300,10 @@ class TfMorphableModel(object):
             raise ValueError(
                 'illum_param shape wrong, dim != (batch, 1, {0}) or (batch, {0})'.format(self.n_illum_para))
 
-        thetal = illum_param[:, 0, 6]
-        phil = illum_param[:, 0, 7]
-        ks = illum_param[:, 0, 8]
-        v = illum_param[:, 0, 9]
+        thetal = illum_param[:, :, 6]
+        phil = illum_param[:, :, 7]
+        ks = illum_param[:, :, 8]
+        v = illum_param[:, :, 9]
 
         amb = tf.linalg.diag(illum_param[:, 0, 0:3])
         d = tf.linalg.diag(illum_param[:, 0, 3:6])
@@ -312,7 +311,7 @@ class TfMorphableModel(object):
         #     [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
         #     dtype=tf.float32)
         l = tf.concat(
-            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
+            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil) + 1],
             axis=1)
         h = l + tf.expand_dims(tf.constant([0, 0, 1], dtype=tf.float32), axis=0)
         h = h / tf.sqrt(tf.reduce_sum(tf.square(h), axis=1))
@@ -377,7 +376,7 @@ class TfMorphableModel(object):
         tex = self._get_texture_batch(tex_param=tex_param, batch_size=batch_size)
 
         # o: [batch, n_vertices, 3]
-        # M: constant, matrix[1, 3, 3]
+        # M: constant, matrix[3, 3]
         # g: diagonal, matrix[batch, 3, 3]
         # c: 1
 
@@ -395,7 +394,7 @@ class TfMorphableModel(object):
         # n_l of shape (batch, n_ver, 1)
         n_l = tf.einsum('ijk,iks->ijs', vertex_norm, l)
         # n_h of shape (batch, n_ver, 1)
-        n_h = tf.linalg.matmul(vertex_norm, h)
+        n_h = tf.einsum('ijk,iks->ijs', vertex_norm, h)
         # n_l of shape (batch, n_ver, 3)
         n_l = tf.tile(n_l, [1, 1, 3])
         # n_h of shape (batch, n_ver, 3)
@@ -405,12 +404,18 @@ class TfMorphableModel(object):
         L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex), d) + \
             tf.expand_dims(ks, 2) * tf.math.pow(n_h, v) # <-(batch, 1, 1) * (batch, n_ver, 3)
 
+        # c, (batch, 1)
+        # tf.tile(c, (1, 3)), (batch, 3)
+        # c_expanded, (batch, 3, 3)
+        c_expanded = tf.matrix_diag(tf.tile(c, (1, 3)))
+
         # CT of shape (batch, 3, 3)
-        # elementwise dot product, (batch, 3, 3) * (1, 3, 3)
-        CT = tf.math.multiply(g, tf.expand_dims(c * tf.eye(3) + (1 - c) * M, 0))
+        CT = tf.math.multiply(g, c_expanded + tf.einsum('ijk,ks->ijs', 1 - c_expanded, M))
+
+        # vertex_colors: (batch, )
         vertex_colors = tf.einsum('ijk,iks->ijs', L, CT) + o
 
-        tf.debugging.assert_shapes({vertex_colors: (self.n_vertices, 3)})
+        tf.debugging.assert_shapes({vertex_colors: (batch_size, self.n_vertices, 3)})
         return vertex_colors
 
 
@@ -419,22 +424,24 @@ if __name__ == '__main__':
     mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     import scipy.io as sio
 
+    n_tex_para = 40
+
     mat_data = sio.loadmat(mat_filename)
 
     shape_param = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
     shape_param = tf.expand_dims(shape_param, 0)
     exp_param = tf.constant(mat_data['Exp_Para'], dtype=tf.float32)
     exp_param = tf.expand_dims(exp_param, 0)
-    tex_param = tf.constant(mat_data['Tex_Para'][:40, :], dtype=tf.float32)
+    tex_param = tf.constant(mat_data['Tex_Para'][:n_tex_para, :], dtype=tf.float32)
     tex_param = tf.expand_dims(tex_param, 0)
-    color_param = tf.constant(mat_data['Color_Para'][:, :-1], dtype=tf.float32)
+    color_param = tf.constant(mat_data['Color_Para'], dtype=tf.float32)
     color_param = tf.expand_dims(color_param, 0)
-    illum_param = tf.constant(mat_data['Illum_Para'][:, :-1], dtype=tf.float32)
+    illum_param = tf.constant(mat_data['Illum_Para'], dtype=tf.float32)
     illum_param = tf.expand_dims(illum_param, 0)
     pose_param = tf.constant(mat_data['Pose_Para'], dtype=tf.float32)
     pose_param = tf.expand_dims(pose_param, 0)
 
-    tf_bfm = TfMorphableModel('../../examples/Data/BFM/Out/BFM.mat')
+    tf_bfm = TfMorphableModel(model_path='../../examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
 
     vertices = tf_bfm.get_vertices_batch(
         shape_param=shape_param,
