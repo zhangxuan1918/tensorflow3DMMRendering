@@ -2,7 +2,7 @@ import dirt
 import tensorflow as tf
 from dirt import lighting
 
-from tf_3dmm.mesh.transform import affine_transform, affine_transform_batch
+from tf_3dmm.mesh.transform import affine_transform_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 from tf_3dmm.tf_util import is_tf_expression
 
@@ -19,6 +19,20 @@ def render_batch(
         tf_bfm: TfMorphableModel,
         batch_size: int
 ):
+    """
+    render faces in batch
+    :param: pose_param: [batch, n_pose_para] or (batch, 1, n_pose_param)
+    :param: shape_param: [batch, n_shape_para, 1] or [batch, n_shape_para]
+    :param: exp_param:   [batch, n_exp_para, 1] or [batch, n_exp_para]
+    :param: tex_param: [batch, n_tex_para, 1] or [batch, n_tex_para]
+    :param: color_param: [batch, 1, n_color_para] or [batch, n_color_para]
+    :param: illum_param: [batch, 1, n_illum_para] or [batch, n_illum_para]
+    :param: frame_width: rendered image width
+    :param: frame_height: rendered image height
+    :param: tf_bfm: basel face model
+    :param: batch_size: batch size
+    :return: images, [batch, frame_width, frame_height, 3]
+    """
     assert is_tf_expression(pose_param)
 
     pose_shape = tf.shape(pose_param)
@@ -37,10 +51,10 @@ def render_batch(
         raise ValueError('pose_param shape wrong, dim != ({batch}, 1, {dim}) or ({batch}, {dim})'.format(
                 batch=batch_size, dim=tf_bfm.get_num_pose_param()))
 
-    vertices = tf_bfm.get_vertices_batch(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
+    vertices = tf_bfm.get_vertices(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
     vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
 
-    colors = tf_bfm.get_vertex_colors_batch(
+    colors = tf_bfm.get_vertex_colors(
         tex_param=tex_param,
         color_param=color_param,
         illum_param=illum_param,
@@ -72,6 +86,7 @@ def render_batch(
     image = dirt.rasterise_batch(
         vertices=transformed_vertices,
         faces=tf.tile(tf.expand_dims(tf_bfm.triangles, axis=0), (batch_size, 1, 1)),
+        # faces=tf.expand_dims(tf_bfm.triangles, axis=0),
         vertex_colors=colors,
         background=tf.zeros([batch_size, frame_height, frame_width, 3]),
         width=frame_width, height=frame_height, channels=3

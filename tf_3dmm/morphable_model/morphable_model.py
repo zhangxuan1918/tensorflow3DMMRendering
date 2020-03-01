@@ -70,34 +70,7 @@ class TfMorphableModel(object):
     def get_landmark_indices(self):
         return self.kpt_ind
 
-    def get_vertices(self, shape_param, exp_param):
-        """
-        generate vertices from shape_para and exp_para
-        :param: shape_para: [n_shape_para, 1] or [n_shape_para,]
-        :param: exp_para:   [n_exp_para, 1] or [n_exp_para,]
-        :return: vertices:  [n_vertices, 3]
-        """
-
-        assert is_tf_expression(shape_param) and is_tf_expression(exp_param)
-
-        # reshape shape_param and exp_param
-        if len(tf.shape(shape_param)) == 1:
-            # shape_param (n_shape_para) -> (n_shape_para, 1)
-            shape_param = tf.expand_dims(shape_param, 1)
-        elif len(tf.shape(shape_param)) > 2:
-            raise ValueError('shape_param wrong, dim > 2')
-        if len(tf.shape(exp_param)) == 1:
-            exp_param = tf.expand_dims(exp_param, 1)
-        elif len(tf.shape(exp_param)) > 2:
-            raise ValueError('exp_param wrong, dim > 2')
-
-        vertices = self.shape_mu + tf.einsum('ij,js->is', self.shape_pc, shape_param) + \
-                   tf.einsum('ij,js->is', self.exp_pc, exp_param)
-        vertices = tf.reshape(vertices, (self.n_vertices, 3))
-
-        return vertices
-
-    def get_vertices_batch(self, shape_param, exp_param, batch_size):
+    def get_vertices(self, shape_param, exp_param, batch_size):
         """
         generate vertices from shape_para and exp_para
         :param: shape_para: [batch, n_shape_para, 1] or [batch, n_shape_para]
@@ -147,22 +120,7 @@ class TfMorphableModel(object):
         vertices = tf.reshape(vertices, (batch_size, self.n_vertices, 3))
         return vertices
 
-    def _get_texture(self, tex_param):
-        """
-        generate texture using tex_Para
-        :param tex_param: [40, 1]
-        :return: tex: [n_vertices, 3]
-        """
-
-        assert is_tf_expression(tex_param)
-
-        tex = self.tex_mu + tf.einsum('ij,js->is', self.tex_pc, tex_param)
-        tex = tf.reshape(tex, (self.n_vertices, 3))
-
-        tf.debugging.assert_shapes([(tex, (self.n_vertices, 3))])
-        return tex
-
-    def _get_texture_batch(self, tex_param, batch_size):
+    def _get_texture(self, tex_param, batch_size):
         """
         generate texture using tex_Para
         :param tex_param: [batch, 40, 1] or [batch, 40]
@@ -190,36 +148,7 @@ class TfMorphableModel(object):
         tex = tf.reshape(tex, (batch_size, self.n_vertices, 3))
         return tex
 
-    def _get_color(self, color_param):
-        """
-        generate color from color_para
-        :param color_param: [1, 7]
-        :returns:
-             o: [n_vertices, 3]
-             M: constant matrix [3, 3]
-             g: diagonal matrix [3, 3]
-             c: float
-        """
-
-        assert is_tf_expression(color_param)
-
-        M = tf.constant(
-            [[0.3, 0.59, 0.11],
-             [0.3, 0.59, 0.11],
-             [0.3, 0.59, 0.11]],
-            shape=(3, 3)
-        )
-
-        g = tf.linalg.tensor_diag(color_param[0, 0:3])
-        o = tf.reshape(color_param[0, 3:6], (1, 3))
-        # o matrix of shape(n_vertices, 3)
-        o = tf.tile(o, [self.n_vertices, 1])
-
-        tf.debugging.assert_shapes([(o, (self.n_vertices, 3))])
-
-        return o, M, g, 1
-
-    def _get_color_batch(self, color_param, batch_size):
+    def _get_color(self, color_param, batch_size):
         """
         # Color_Para: add last value as it's always 1
 
@@ -268,41 +197,7 @@ class TfMorphableModel(object):
 
         return o, M, g, c
 
-    def _get_illum(self, illum_param):
-        """
-        # Illum_Para: add last value as it's always 20
-
-        genreate illuminate params
-        :param illum_param: [1, 9]
-        :return:
-
-        h: [3, 1]
-        ks: float
-        v: 20.0
-        amb: [3, 3]
-        d: [3, 3]
-        ks: float
-        l: [3, 1]
-        """
-        assert is_tf_expression(illum_param)
-
-        thetal = illum_param[0, 6]
-        phil = illum_param[0, 7]
-        ks = illum_param[0, 8]
-        v = 20.
-
-        amb = tf.linalg.diag(illum_param[0, 0:3])
-        d = tf.linalg.diag(illum_param[0, 3:6])
-
-        l = tf.Variable(
-            [tf.math.cos(thetal) * tf.math.sin(phil), tf.math.sin(thetal), tf.math.cos(thetal) * tf.math.cos(phil)],
-            dtype=tf.float32)
-        h = l + tf.constant([0, 0, 1], dtype=tf.float32)
-        h = h / tf.sqrt(tf.reduce_sum(tf.square(h)))
-
-        return tf.reshape(h, (-1, 1)), ks, v, amb, d, tf.reshape(l, (-1, 1))
-
-    def _get_illum_batch(self, illum_param, batch_size):
+    def _get_illum(self, illum_param, batch_size):
         """
         genreate illuminate params
         :param illum_param: [batch, 1, 10] or  [batch, 10]
@@ -351,46 +246,7 @@ class TfMorphableModel(object):
 
         return tf.reshape(h, (batch_size, -1, 1)), ks, v, amb, d, tf.reshape(l, (batch_size, -1, 1))
 
-    def get_vertex_colors(self, tex_param, color_param, illum_param, vertex_norm):
-        """
-        generate texture and color for rendering
-        :param tex_param: [199, 1]
-        :param color_param: [1, 6]
-        :param illum_param: [1, 9]
-        :param vertex_norm: vertex norm [n_vertex, 3]
-        :return: texture color [n_vertex, 3]
-        """
-
-        assert is_tf_expression(tex_param)
-        assert is_tf_expression(color_param)
-        assert is_tf_expression(illum_param)
-        assert is_tf_expression(vertex_norm)
-
-        tex = self._get_texture(tex_param=tex_param)
-
-        o, M, g, c = self._get_color(color_param=color_param)
-        h, ks, v, amb, dirt, l = self._get_illum(illum_param=illum_param)
-        # n_l of shape (n_ver, 1)
-        n_l = tf.linalg.matmul(vertex_norm, l)
-        # n_h of shape (n_ver, 1)
-        n_h = tf.linalg.matmul(vertex_norm, h)
-        # n_l of shape (n_ver, 3)
-        n_l = tf.tile(n_l, [1, 3])
-        # n_h of shape (n_ver, 3)
-        n_h = tf.tile(n_h, [1, 3])
-
-        # L of shape (n_ver, 3)
-        L = tf.linalg.matmul(tex, amb) + tf.linalg.matmul(tf.math.multiply(n_l, tex), dirt) + \
-            ks * tf.math.pow(n_h, v)
-
-        # CT of shape (3, 3)
-        CT = tf.math.multiply(g, c * tf.eye(3) + (1 - c) * M)
-        vertex_colors = tf.linalg.matmul(L, CT) + o
-
-        tf.debugging.assert_shapes([(vertex_colors, (self.n_vertices, 3))])
-        return vertex_colors
-
-    def get_vertex_colors_batch(self, tex_param, color_param, illum_param, vertex_norm, batch_size):
+    def get_vertex_colors(self, tex_param, color_param, illum_param, vertex_norm, batch_size):
         """
         generate texture and color for rendering
         :param tex_param: [batch, 199, 1] or [batch, 199]
@@ -406,14 +262,14 @@ class TfMorphableModel(object):
         assert is_tf_expression(illum_param)
         assert is_tf_expression(vertex_norm)
 
-        tex = self._get_texture_batch(tex_param=tex_param, batch_size=batch_size)
+        tex = self._get_texture(tex_param=tex_param, batch_size=batch_size)
 
         # o: [batch, n_vertices, 3]
         # M: constant, matrix[3, 3]
         # g: diagonal, matrix[batch, 3, 3]
         # c: 1
 
-        o, M, g, c = self._get_color_batch(color_param=color_param, batch_size=batch_size)
+        o, M, g, c = self._get_color(color_param=color_param, batch_size=batch_size)
 
         # h: [batch, 3, 1]
         # ks: [batch, 1]
@@ -423,7 +279,7 @@ class TfMorphableModel(object):
         # ks: [batch, 1]
         # l: [batch, 3, 1]
 
-        h, ks, v, amb, d, l = self._get_illum_batch(illum_param=illum_param, batch_size=batch_size)
+        h, ks, v, amb, d, l = self._get_illum(illum_param=illum_param, batch_size=batch_size)
         # n_l of shape (batch, n_ver, 1)
         n_l = tf.einsum('ijk,iks->ijs', vertex_norm, l)
         # n_h of shape (batch, n_ver, 1)
@@ -480,7 +336,7 @@ if __name__ == '__main__':
 
     tf_bfm = TfMorphableModel(model_path='../../examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
 
-    vertices = tf_bfm.get_vertices_batch(
+    vertices = tf_bfm.get_vertices(
         shape_param=shape_param,
         exp_param=exp_param,
         batch_size=1
@@ -489,4 +345,4 @@ if __name__ == '__main__':
     from dirt import lighting
 
     vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
-    texture = tf_bfm.get_vertex_colors_batch(tex_param, color_param, illum_param, -vertex_norm, 1)
+    texture = tf_bfm.get_vertex_colors(tex_param, color_param, illum_param, -vertex_norm, 1)

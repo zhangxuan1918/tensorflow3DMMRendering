@@ -26,14 +26,14 @@ pose_param = tf.expand_dims(pose_param, 0)
 
 tf_bfm = TfMorphableModel(model_path='../../examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
 
-vertices = tf_bfm.get_vertices_batch(
+vertices = tf_bfm.get_vertices(
     shape_param=shape_param,
     exp_param=exp_param,
     batch_size=1
 )
 
 vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
-bvertex_colors = tf_bfm.get_vertex_colors_batch(tex_param, color_param, illum_param, -vertex_norm, 1)
+bvertex_colors = tf_bfm.get_vertex_colors(tex_param, color_param, illum_param, -vertex_norm, 1)
 vertex_colors = tf_bfm.get_vertex_colors(tex_param[0], color_param[0], illum_param[0], -vertex_norm[0])
 
 print('done')
