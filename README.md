@@ -4,28 +4,14 @@ This project uses [dirt](https://github.com/pmh47/dirt) to render 3DMM model in 
 
 3DMM modified from [face3d](https://github.com/YadiraF/face3d)
 
-## Dockerfile
- 
-### Tensorflow 2.0 && python 3.7
-
-[dockerfile](dockerfiles/tf2_0_py3/Dockerfile)
-
-### Tensorflow 1.3 && python 2.7
-
-[dockerfile](dockerfiles/tf1_13_py2/Dockerfile)
-
 ## Example
 
 Before running example
 
 * put `BFM.mat` in folder `/examples/Data/BFM/Out/BFM.mat`. To generate `BFM.mat` see [face3d](https://github.com/YadiraF/face3d)
-* put `IBUG_image_008_1_0.mat` to folder `/examples/Data/IBUG_image_008_1_0.mat`
+* put `<PICTURE>.mat` to folder `/examples/Data/`
+* create folders `/output/render_batch/` and `/output/render_batch2/`
 
-### Tensorflow 2.0 && python 3.7
-
-[example](sample/tensorflow_2_0_py3/texture_3dmm.py)
-
-### Tensorflow 1.3 && python 2.7
-
-[example](sample/tensorflow_1_13_py2/texture_3dmm.py)
+[example1](./example_render_batch.py)
+[example2](./example_render_batch2.py)
 
