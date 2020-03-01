@@ -108,8 +108,10 @@ if __name__ == '__main__':
     import scipy.io as sio
     tf_bfm = TfMorphableModel('../../examples/Data/BFM/Out/BFM.mat')
     # --load mesh data
-    pic_name = 'IBUG_image_008_1_0'
+    # pic_name = 'IBUG_image_008_1_0'
     # pic_name = 'IBUG_image_014_01_2'
+    # pic_name = 'image00002'
+    pic_name = 'AFW_134212_1_0'
     mat_filename = '../../examples/Data/{0}.mat'.format(pic_name)
     mat_data = sio.loadmat(mat_filename)
     sp = tf.constant(mat_data['Shape_Para'], dtype=tf.float32)
@@ -148,4 +150,4 @@ if __name__ == '__main__':
 
     import imageio
     import numpy as np
-    imageio.imsave('./textured_3dmm.jpg', image.numpy().astype(np.uint8))
+    imageio.imsave('../../output/render_single/rendered_{0}.jpg'.format(pic_name), image.numpy().astype(np.uint8))
