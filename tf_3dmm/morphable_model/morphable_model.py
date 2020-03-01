@@ -104,7 +104,7 @@ class TfMorphableModel(object):
                 [(exp_param, (batch_size, self.n_exp_para))],
                 message='exp_param shape wrong, dim != ({batch}, {dim})'.format(
                     batch=batch_size, dim=self.n_exp_para))
-            shape_param = tf.expand_dims(exp_param, 2)
+            exp_param = tf.expand_dims(exp_param, 2)
         elif len(ep_shape) == 3:
             tf.debugging.assert_shapes(
                 [(exp_param, (batch_size, self.n_exp_para, 1))],
@@ -131,7 +131,7 @@ class TfMorphableModel(object):
         tp_shape = tf.shape(tex_param)
         if len(tp_shape) == 2:
             tf.debugging.assert_shapes(
-                [(tp_shape, (batch_size, self.n_tex_para))],
+                [(tex_param, (batch_size, self.n_tex_para))],
                 message='tex_param shape wrong, dim != ({batch}, {dim})'.format(
                     batch=batch_size, dim=self.n_tex_para))
             tex_param = tf.expand_dims(tex_param, 2)
