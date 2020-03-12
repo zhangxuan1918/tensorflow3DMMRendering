@@ -36,13 +36,13 @@ def render_batch(
     assert is_tf_expression(pose_param)
 
     pose_shape = tf.shape(pose_param)
-    if len(pose_shape) == 2:
+    if pose_shape.shape[0] == 2:
         tf.debugging.assert_shapes(
             [(pose_param, (batch_size, tf_bfm.get_num_pose_param()))],
             message='pose_param shape wrong, dim != ({batch}, {dim})'.format(
                 batch=batch_size, dim=tf_bfm.get_num_pose_param()))
         pose_param = tf.expand_dims(pose_param, 1)
-    elif len(pose_shape) == 3:
+    elif pose_shape.shape[0] == 3:
         tf.debugging.assert_shapes(
             [(pose_param, (batch_size, 1, tf_bfm.get_num_pose_param()))],
             message='pose_param shape wrong, dim != ({batch}, 1, {dim})'.format(
