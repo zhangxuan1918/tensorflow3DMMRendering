@@ -4,5 +4,5 @@ Pillow==6.1.0
 scipy==1.4.1
 imageio==2.5.0
 scikit-image==0.14.3
-tensorflow-graphics==1.0.0
+# tensorflow-graphics==1.0.0, outdated, install directly from github
 tensorflow>=2.0.0
