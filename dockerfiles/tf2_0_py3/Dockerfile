@@ -13,7 +13,6 @@ ARG CUDA_BASE_VERSION
 ARG UBUNTU_VERSION
 ARG CUDNN_VERSION
 ARG TENSORFLOW_VERSION
-ARG GITHUB_PAT
 
 # set environment variables
 ENV CUDA_BASE_VERSION=${CUDA_BASE_VERSION}
@@ -65,7 +64,7 @@ RUN cd ~ && git clone https://github.com/zhangxuan1918/dirt.git && \
 RUN python ~/dirt/tests/square_test.py
 
 # install tensorflow-graphics
-RUN RUN pip install git+https://zhangxuan1918:$GITHUB_PAT@git@github.com:zhangxuan1918/graphics.git
+RUN pip install git+https://github.com/zhangxuan1918/graphics.git
 
 # install requirement
 ADD requirements.txt .

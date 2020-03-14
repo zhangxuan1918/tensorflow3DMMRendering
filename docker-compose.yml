@@ -14,5 +14,3 @@ services:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
       - tensorlfow_3dmm_rendering.env
-
-#docker-compose build --build-arg GITHUB_PAT="$(cat ~/.ssh/github_xuan_desktop_token)"
