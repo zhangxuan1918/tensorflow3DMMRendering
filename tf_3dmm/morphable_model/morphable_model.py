@@ -114,8 +114,7 @@ class TfMorphableModel(object):
             raise ValueError('exp_param shape wrong, dim != ({batch}, {dim}, 1) or ({batch}, {dim})'.format(
                 batch=batch_size, dim=self.n_exp_para))
 
-        vertices = tf.expand_dims(self.shape_mu, 0) + tf.einsum('ij,kjs->kis', self.shape_pc, shape_param) + \
-                   tf.einsum('ij,kjs->kis', self.exp_pc, exp_param)
+        vertices = tf.expand_dims(self.shape_mu, 0) + tf.einsum('ij,kjs->kis', self.shape_pc, shape_param) + tf.einsum('ij,kjs->kis', self.exp_pc, exp_param)
 
         vertices = tf.reshape(vertices, (batch_size, self.n_vertices, 3))
         return vertices
@@ -290,8 +289,7 @@ class TfMorphableModel(object):
         n_h = tf.tile(n_h, [1, 1, 3])
 
         # L of shape (batch, n_ver, 3)
-        L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex), d) + \
-            tf.expand_dims(ks, axis=2) * tf.math.pow(n_h, tf.expand_dims(v, axis=1))  # <-(batch, 1, 1) * (batch, n_ver, 3)
+        L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex), d) + tf.expand_dims(ks, axis=2) * tf.math.pow(n_h, tf.expand_dims(v, axis=1))  # <-(batch, 1, 1) * (batch, n_ver, 3)
 
         # c, (batch, 1)
         # tf.tile(c, (1, 3)), (batch, 3)
