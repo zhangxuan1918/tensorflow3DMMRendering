@@ -38,20 +38,20 @@ class TfMorphableModel(object):
         # 3dmm model
         self.shape_pc = tf.constant(model['shapePC'], dtype=tf.float32)
         self.shape_mu = tf.constant(model['shapeMU'], dtype=tf.float32)
-        self.shape_ev = tf.constant(model['shapeEV'], dtype=tf.float32)
+        # self.shape_ev = tf.constant(model['shapeEV'], dtype=tf.float32)
 
         # Tex param: only take 40 params
         self.tex_pc = tf.constant(model['texPC'][:, :n_tex_para], dtype=tf.float32)
         self.tex_mu = tf.constant(model['texMU'], dtype=tf.float32)
-        self.tex_ev = tf.constant(model['texEV'][:n_tex_para, :], dtype=tf.float32)
+        # self.tex_ev = tf.constant(model['texEV'][:n_tex_para, :], dtype=tf.float32)
 
         self.exp_pc = tf.constant(model['expPC'], dtype=tf.float32)
         self.exp_mu = tf.constant(model['expMU'], dtype=tf.float32)
-        self.exp_ev = tf.constant(model['expEV'], dtype=tf.float32)
+        # self.exp_ev = tf.constant(model['expEV'], dtype=tf.float32)
 
         self.triangles = tf.constant(model['tri'], dtype=tf.int32)
-        self.triangles_mouth = tf.constant(model['tri_mouth'], dtype=tf.int32)
-        self.full_triangles = tf.concat([self.triangles, self.triangles_mouth], axis=0)
+        # self.triangles_mouth = tf.constant(model['tri_mouth'], dtype=tf.int32)
+        # self.full_triangles = tf.concat([self.triangles, self.triangles_mouth], axis=0)
 
         # fixed attributes
         self.n_vertices = self.shape_pc.shape[0] // 3

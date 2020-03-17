@@ -1,7 +1,10 @@
-from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 import scipy.io as sio
 import tensorflow as tf
+
+tf.debugging.set_log_device_placement(True)
+
 
 n_tex_para = 40
 tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
