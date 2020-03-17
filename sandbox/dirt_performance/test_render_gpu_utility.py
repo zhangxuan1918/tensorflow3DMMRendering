@@ -4,7 +4,9 @@ import scipy.io as sio
 import tensorflow as tf
 
 tf.debugging.set_log_device_placement(True)
-
+gpus = tf.config.experimental.list_physical_devices('GPU')
+print(gpus)
+tf.config.experimental.set_memory_growth(gpus[0], True)
 
 n_tex_para = 40
 tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
