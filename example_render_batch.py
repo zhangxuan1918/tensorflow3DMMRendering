@@ -2,7 +2,7 @@ import imageio
 import numpy as np
 
 from example_utils import load_params
-from tf_3dmm.mesh.reader import render_batch
+from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 
 

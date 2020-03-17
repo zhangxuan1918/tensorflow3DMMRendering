@@ -1,7 +1,14 @@
-from tf_3dmm.mesh.reader import render_batch
-from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+import time
+
 import scipy.io as sio
 import tensorflow as tf
+import tensorflow_graphics as tfg
+from dirt import lighting
+
+from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
+
+tf.debugging.set_log_device_placement(True)
+
 
 n_tex_para = 40
 tf_bfm = TfMorphableModel(model_path='/opt/project/examples/Data/BFM/Out/BFM.mat', n_tex_para=n_tex_para)
@@ -41,19 +48,33 @@ def my_load_params(pic_names, n_tex_para):
 
 shape_param_batch, exp_param_batch, tex_param_batch, color_param_batch, illum_param_batch, pose_param_batch = \
     my_load_params(pic_names=pic_names, n_tex_para=n_tex_para)
+vertices = tf_bfm.get_vertices(shape_param=shape_param_batch, exp_param=exp_param_batch, batch_size=batch_size)
+
+rounds = 10
 i = 0
-while True:
-    images = render_batch(
-        pose_param=pose_param_batch,
-        shape_param=shape_param_batch,
-        exp_param=exp_param_batch,
-        tex_param=tex_param_batch,
-        color_param=color_param_batch,
-        illum_param=illum_param_batch,
-        frame_height=450,
-        frame_width=450,
-        tf_bfm=tf_bfm,
-        batch_size=batch_size
+dirt_start = time.time()
+while i < rounds:
+    vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
+    i += 1
+    print('dirt ', i)
+
+dirt_end = time.time()
+dirt_avg = (dirt_end - dirt_start) / i
+
+i = 0
+tfg_start = time.time()
+while i < rounds:
+    vertex_norm2 = tfg.geometry.representation.mesh.normals.vertex_normals(
+        vertices=vertices,
+        indices=tf.repeat(tf.expand_dims(tf_bfm.triangles, 0), batch_size, axis=0),
+        clockwise=True,
+        name=None
     )
     i += 1
-    print(i)
+    print('tfg ', i)
+
+tfg_end = time.time()
+
+tfg_avg = (tfg_end - tfg_start) / i
+print('dirt avg time: %f' % dirt_avg)
+print('tgf avg time: %f' % tfg_avg)

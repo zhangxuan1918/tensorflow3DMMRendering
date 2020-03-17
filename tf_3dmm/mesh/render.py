@@ -1,6 +1,6 @@
 import dirt
 import tensorflow as tf
-from dirt import lighting
+import tensorflow_graphics as tfg
 
 from tf_3dmm.mesh.transform import affine_transform_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
@@ -52,7 +52,12 @@ def render_batch(
                 batch=batch_size, dim=tf_bfm.get_num_pose_param()))
 
     vertices = tf_bfm.get_vertices(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
-    vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
+    # vertex_norm = lighting.vertex_normals(vertices, tf_bfm.triangles)
+    vertex_norm = tfg.geometry.representation.mesh.normals.vertex_normals(
+        vertices=vertices,
+        indices=tf.repeat(tf.expand_dims(tf_bfm.triangles, 0), batch_size, axis=0),
+        clockwise=True
+    )
 
     colors = tf_bfm.get_vertex_colors(
         tex_param=tex_param,
