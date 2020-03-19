@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow_graphics as tfg
 
 
-def rotate_batch(vertices, angles_rad):
+def rotate(vertices, angles_rad):
     rotate_matrix = tfg.geometry.transformation.rotation_matrix_3d.from_euler(
         angles=angles_rad
     )
@@ -15,7 +15,7 @@ def rotate_batch(vertices, angles_rad):
     return rotated_vertices
 
 
-def affine_transform_batch(vertices, scaling, angles_rad, t3d):
+def affine_transform(vertices, scaling, angles_rad, t3d):
     """
         affine transformation in 3d
 
@@ -33,7 +33,7 @@ def affine_transform_batch(vertices, scaling, angles_rad, t3d):
         :return:
             transformed vertices: [batch, n_ver, 3]
     """
-    transformed_vertices = tf.expand_dims(scaling, axis=2) * rotate_batch(vertices=vertices,
-                                                                          angles_rad=angles_rad) + t3d
+    transformed_vertices = tf.expand_dims(scaling, axis=2) * rotate(vertices=vertices,
+                                                                    angles_rad=angles_rad) + t3d
 
     return transformed_vertices

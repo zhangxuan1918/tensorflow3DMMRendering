@@ -2,7 +2,7 @@ import dirt
 import tensorflow as tf
 import tensorflow_graphics as tfg
 
-from tf_3dmm.mesh.transform import affine_transform_batch
+from tf_3dmm.mesh.transform import affine_transform
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
 from tf_3dmm.tf_util import is_tf_expression
 
@@ -69,7 +69,7 @@ def render_batch(
 
     colors = tf.clip_by_value(colors / 255., 0., 1.)
 
-    transformed_vertices = affine_transform_batch(
+    transformed_vertices = affine_transform(
         vertices=vertices,
         scaling=pose_param[:, 0, 6:],
         angles_rad=pose_param[:, 0, 0:3],

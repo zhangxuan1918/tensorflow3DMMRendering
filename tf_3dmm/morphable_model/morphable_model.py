@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tf_3dmm.mesh.transform import affine_transform
 from tf_3dmm.morphable_model.morphable_model_util import load_BFM
 from tf_3dmm.tf_util import is_tf_expression
 
@@ -63,6 +64,7 @@ class TfMorphableModel(object):
         self.n_illum_para = 10
         self.n_pose_para = 7
         self.kpt_ind = tf.constant(model['kpt_ind'], dtype=tf.int32)
+        self.n_landmarks = model['kpt_ind'].shape[0]
 
     def get_num_pose_param(self):
         return self.n_pose_para
@@ -91,11 +93,11 @@ class TfMorphableModel(object):
         elif sp_shape.shape[0] == 3:
             tf.debugging.assert_shapes(
                 [(shape_param, (batch_size, self.n_shape_para, 1))],
-                message='pose_param shape wrong, dim != ({batch}, {dim}, 1)'.format(
+                message='shape_param shape wrong, dim != ({batch}, {dim}, 1)'.format(
                     batch=batch_size, dim=self.n_shape_para))
         else:
             raise ValueError(
-                'pose_param shape wrong, dim != ({batch}, {dim}, 1) or ({batch}, {dim})'.format(
+                'shape_param shape wrong, dim != ({batch}, {dim}, 1) or ({batch}, {dim})'.format(
                     batch=batch_size, dim=self.n_shape_para))
 
         ep_shape = tf.shape(exp_param)
@@ -114,7 +116,8 @@ class TfMorphableModel(object):
             raise ValueError('exp_param shape wrong, dim != ({batch}, {dim}, 1) or ({batch}, {dim})'.format(
                 batch=batch_size, dim=self.n_exp_para))
 
-        vertices = tf.expand_dims(self.shape_mu, 0) + tf.einsum('ij,kjs->kis', self.shape_pc, shape_param) + tf.einsum('ij,kjs->kis', self.exp_pc, exp_param)
+        vertices = tf.expand_dims(self.shape_mu, 0) + tf.einsum('ij,kjs->kis', self.shape_pc, shape_param) + tf.einsum(
+            'ij,kjs->kis', self.exp_pc, exp_param)
 
         vertices = tf.reshape(vertices, (batch_size, self.n_vertices, 3))
         return vertices
@@ -226,7 +229,7 @@ class TfMorphableModel(object):
                     batch=batch_size, dim=self.n_illum_para))
         else:
             raise ValueError('illum_param shape wrong, dim != ({batch}, 1, {dim}) or ({batch}, {dim})'.format(
-                    batch=batch_size, dim=self.n_illum_para))
+                batch=batch_size, dim=self.n_illum_para))
 
         thetal = illum_param[:, :, 6]
         phil = illum_param[:, :, 7]
@@ -289,7 +292,11 @@ class TfMorphableModel(object):
         n_h = tf.tile(n_h, [1, 1, 3])
 
         # L of shape (batch, n_ver, 3)
-        L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex), d) + tf.expand_dims(ks, axis=2) * tf.math.pow(n_h, tf.expand_dims(v, axis=1))  # <-(batch, 1, 1) * (batch, n_ver, 3)
+        L = tf.einsum('ijk,iks->ijs', tex, amb) + tf.einsum('ijk,iks->ijs', tf.math.multiply(n_l, tex),
+                                                            d) + tf.expand_dims(ks, axis=2) * tf.math.pow(n_h,
+                                                                                                          tf.expand_dims(
+                                                                                                              v,
+                                                                                                              axis=1))  # <-(batch, 1, 1) * (batch, n_ver, 3)
 
         # c, (batch, 1)
         # tf.tile(c, (1, 3)), (batch, 3)
@@ -308,6 +315,60 @@ class TfMorphableModel(object):
                 batch=batch_size, n_vert=self.n_vertices))
 
         return vertex_colors
+
+    def get_landmarks(self, shape_param, exp_param, pose_param, batch_size, resolution, is_2d=False, is_plot=False):
+        """
+        compute landmarks from shape, expression and pose
+        :param shape_param:
+        :param exp_param:
+        :param pose_param:
+        :param batch_size:
+        :param resolution:
+        :return:
+        """
+        pose_shape = tf.shape(pose_param)
+        if pose_shape.shape[0] == 2:
+            tf.debugging.assert_shapes(
+                [(pose_param, (batch_size, self.get_num_pose_param()))],
+                message='pose_param shape wrong, dim != ({batch}, {dim})'.format(
+                    batch=batch_size, dim=self.get_num_pose_param()))
+            pose_param = tf.expand_dims(pose_param, 1)
+        elif pose_shape.shape[0] == 3:
+            tf.debugging.assert_shapes(
+                [(pose_param, (batch_size, 1, self.get_num_pose_param()))],
+                message='pose_param shape wrong, dim != ({batch}, 1, {dim})'.format(
+                    batch=batch_size, dim=self.get_num_pose_param()))
+        else:
+            raise ValueError('pose_param shape wrong, dim != ({batch}, 1, {dim}) or ({batch}, {dim})'.format(
+                batch=batch_size, dim=self.get_num_pose_param()))
+
+        vertices = self.get_vertices(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
+        transformed_vertices = affine_transform(
+            vertices=vertices,
+            scaling=pose_param[:, 0, 6:],
+            angles_rad=pose_param[:, 0, 0:3],
+            t3d=pose_param[:, 0:, 3:6]
+        )
+        lm = tf.gather(transformed_vertices, self.kpt_ind, axis=1)
+        tf.debugging.assert_shapes(
+            [(lm, (batch_size, self.n_landmarks, 3))],
+            message='computed landmarks 3d landmarks have wrong shape, != (batch_size, n_landmarks, 3)'
+        )
+        if is_2d:
+            # discard z coordinate
+            lm = tf.concat([tf.gather(lm, [0], axis=2), resolution - tf.gather(lm, [1], axis=2) - 1], axis=2)
+            tf.debugging.assert_shapes(
+                [(lm, (batch_size, self.n_landmarks, 2))],
+                message='computed landmarks 3d landmarks have wrong shape, != (batch_size, num_landmarks, 2)'
+            )
+        if is_plot:
+            # transpose the landmark for plotting
+            lm = tf.transpose(lm, perm=[0, 2, 1])
+            tf.debugging.assert_shapes(
+                [(lm, (batch_size, 2, self.n_landmarks))],
+                message='computed landmarks 3d landmarks have wrong shape, != (batch_size, num_landmarks, 2)'
+            )
+        return lm
 
 
 if __name__ == '__main__':
