@@ -12,6 +12,6 @@ Before running example
 * put `<PICTURE>.mat` to folder `/examples/Data/`
 * create folders `/output/render_batch/` and `/output/render_batch2/`
 * update the picture name in the script
-[example1](./example_render_batch.py)
-[example2](./example_render_batch2.py)
+[example1](example_render.py)
+[example2](example_render_2.py)
 
