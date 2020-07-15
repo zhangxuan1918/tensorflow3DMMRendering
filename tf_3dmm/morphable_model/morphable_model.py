@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-
+import numpy as np
 from tf_3dmm.mesh.transform import affine_transform
 from tf_3dmm.morphable_model.morphable_model_util import load_BFM
 from tf_3dmm.tf_util import is_tf_expression
@@ -28,7 +28,7 @@ class TfMorphableModel(object):
     kpt_ind         : [68,]                     indices for landmarks
     """
 
-    def __init__(self, model_path, n_tex_para=40, model_type='BFM'):
+    def __init__(self, model_path, exp_path=None, n_tex_para=40, n_shape_para=199, model_type='BFM'):
         if model_type == 'BFM':
             model = load_BFM(model_path)
         else:
@@ -37,18 +37,22 @@ class TfMorphableModel(object):
                 model_type
             ))
         # 3dmm model
-        self.shape_pc = tf.constant(model['shapePC'], dtype=tf.float32)
+        self.shape_pc = tf.constant(model['shapePC'][:, :n_shape_para], dtype=tf.float32)
         self.shape_mu = tf.constant(model['shapeMU'], dtype=tf.float32)
-        self.shape_ev = tf.constant(model['shapeEV'], dtype=tf.float32)
+        self.shape_ev = tf.constant(model['shapeEV'][:, :n_shape_para], dtype=tf.float32)
 
         # Tex param: only take 40 params
         self.tex_pc = tf.constant(model['texPC'][:, :n_tex_para], dtype=tf.float32)
         self.tex_mu = tf.constant(model['texMU'], dtype=tf.float32)
         self.tex_ev = tf.constant(model['texEV'][:n_tex_para, :], dtype=tf.float32)
 
-        self.exp_pc = tf.constant(model['expPC'], dtype=tf.float32)
-        self.exp_mu = tf.constant(model['expMU'], dtype=tf.float32)
-        self.exp_ev = tf.constant(model['expEV'], dtype=tf.float32)
+        if exp_path is None:
+            self.shape_mu += model['expMU']
+            self.exp_pc = tf.constant(model['expPC'], dtype=tf.float32)
+        else:
+            exp_data = np.load(exp_path)
+            self.shape_mu += exp_data['expMU']
+            self.exp_pc = tf.constant(exp_data['expPC'], dtype=tf.float32)
 
         self.triangles = tf.constant(model['tri'], dtype=tf.int32)
         # self.triangles_mouth = tf.constant(model['tri_mouth'], dtype=tf.int32)
@@ -57,13 +61,15 @@ class TfMorphableModel(object):
         # fixed attributes
         self.n_vertices = self.shape_pc.shape[0] // 3
         self.n_triangles = self.triangles.shape[0]
-        self.n_shape_para = self.shape_pc.shape[1]  # 199
-        self.n_exp_para = self.exp_pc.shape[1]  # 29
-        self.n_tex_para = n_tex_para  # 40
+        self.n_shape_para = n_shape_para
+        self.n_tex_para = n_tex_para
+        self.n_exp_para = self.exp_pc.shape[1]
         self.n_color_para = 7
         self.n_illum_para = 10
         self.n_pose_para = 7
         self.kpt_ind = tf.constant(model['kpt_ind'], dtype=tf.int32)
+        # https://github.com/anilbas/BFMLandmarks/blob/master/Landmarks68_BFM.anl
+        # self.kpt_ind = tf.constant([21873, 22149, 21653, 21036, 43236, 44918, 46166, 47135, 47914, 48695, 49667, 50924, 52613, 33678, 33005, 32469, 32709, 38695, 39392, 39782, 39987, 40154, 40893, 41059, 41267, 41661, 42367, 8161, 8177, 8187, 8192, 6515, 7243, 8204, 9163, 9883, 2215, 3886, 4920, 5828, 4801, 3640, 10455, 11353, 12383, 14066, 12653, 11492, 5522, 6025, 7495, 8215, 8935, 10395, 10795, 9555, 8836, 8236, 7636, 6915, 5909, 7384, 8223, 9064, 10537, 8829, 8229, 7629], dtype=tf.int32)
         self.n_landmarks = model['kpt_ind'].shape[0]
 
     def get_num_pose_param(self):
@@ -260,12 +266,15 @@ class TfMorphableModel(object):
         """
 
         assert is_tf_expression(tex_param)
-        assert is_tf_expression(color_param)
-        assert is_tf_expression(illum_param)
         assert is_tf_expression(vertex_norm)
 
         tex = self._get_texture(tex_param=tex_param, batch_size=batch_size)
 
+        if color_param is None or illum_param is None:
+            return tex
+
+        assert is_tf_expression(color_param)
+        assert is_tf_expression(illum_param)
         # o: [batch, n_vertices, 3]
         # M: constant, matrix[3, 3]
         # g: diagonal, matrix[batch, 3, 3]
@@ -343,12 +352,14 @@ class TfMorphableModel(object):
                 batch=batch_size, dim=self.get_num_pose_param()))
 
         vertices = self.get_vertices(shape_param=shape_param, exp_param=exp_param, batch_size=batch_size)
+
         transformed_vertices = affine_transform(
             vertices=vertices,
             scaling=pose_param[:, 0, 6:],
             angles_rad=pose_param[:, 0, 0:3],
             t3d=pose_param[:, 0:, 3:6]
         )
+
         lm = tf.gather(transformed_vertices, self.kpt_ind, axis=1)
         tf.debugging.assert_shapes(
             [(lm, (batch_size, self.n_landmarks, 3))],
