@@ -3,6 +3,7 @@ import numpy as np
 import PIL
 import tensorflow as tf
 import scipy.io as sio
+from matplotlib.axes import Axes
 
 
 def load_params(pic_names, n_tex_para, data_folder='./examples/Data/300W_LP'):
@@ -80,3 +81,27 @@ def load_images(pic_names, folder):
             images.append(img)
 
     return images
+
+
+def plot_image_w_lm(ax: Axes, resolution: int, image, lm):
+    ax.set_ylim(bottom=resolution, top=0)
+    ax.set_xlim(left=0, right=resolution)
+    ax.imshow(image, origin='upper')
+    ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 17:22], lm[1, 17:22], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 22:27], lm[1, 22:27], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 27:31], lm[1, 27:31], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 31:36], lm[1, 31:36], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 36:42], lm[1, 36:42], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 42:48], lm[1, 42:48], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 48:60], lm[1, 48:60], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)
+    ax.plot(lm[0, 60:68], lm[1, 60:68], marker='o', markersize=2, linestyle='-',
+            color='w', lw=2)

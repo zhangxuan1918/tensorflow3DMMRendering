@@ -1,37 +1,10 @@
 import os
-
-import imageio
 import numpy as np
 import tensorflow as tf
-from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
-from example_utils import load_params, load_images
+from example_utils import load_params, load_images, plot_image_w_lm
 from tf_3dmm.mesh.render import render_batch
 from tf_3dmm.morphable_model.morphable_model import TfMorphableModel
-
-
-def plot_image_w_lm(ax: Axes, resolution: int, image, lm):
-    ax.set_ylim(bottom=resolution, top=0)
-    ax.set_xlim(left=0, right=resolution)
-    ax.imshow(image, origin='upper')
-    ax.plot(lm[0, 0:17], lm[1, 0:17], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 17:22], lm[1, 17:22], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 22:27], lm[1, 22:27], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 27:31], lm[1, 27:31], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 31:36], lm[1, 31:36], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 36:42], lm[1, 36:42], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 42:48], lm[1, 42:48], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 48:60], lm[1, 48:60], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
-    ax.plot(lm[0, 60:68], lm[1, 60:68], marker='o', markersize=2, linestyle='-',
-            color='w', lw=2)
 
 
 def example_render_batch2(pic_names: list, tf_bfm: TfMorphableModel, save_to_folder: str, n_tex_para:int):
@@ -70,8 +43,6 @@ def example_render_batch2(pic_names: list, tf_bfm: TfMorphableModel, save_to_fol
         batch_size=batch_size
     ).numpy().astype(np.uint8)
 
-    # for i, pic_name in enumerate(pic_names):
-    #     imageio.imsave('{folder}/rendered_{pic}.jpg'.format(folder=save_to_folder, pic=pic_name), images[i, :, :, :].numpy().astype(np.uint8))
     for i, pic_name in enumerate(pic_names):
         fig = plt.figure()
         ax = fig.add_subplot(1, 2, 1)
