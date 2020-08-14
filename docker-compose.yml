@@ -9,7 +9,7 @@ services:
         UBUNTU_VERSION: 18.04
         CUDNN_VERSION: 7.6.4.38
         TENSORFLOW_VERSION: 2.3.0
-    image: xuan1918/tensorflow/3dmm-rendering:v0.3.1-py3
+    image: xuan1918/tensorflow/3dmm-rendering:v0.3.2-py3
     environment:
         - NVIDIA_VISIBLE_DEVICES=all
     env_file:
