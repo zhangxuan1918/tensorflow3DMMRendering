@@ -1,7 +1,7 @@
 numpy==1.18.1
 matplotlib==2.2.4
 pillow>=7.1.0
-scipy==1.4.1
+scipy==1.10.0
 imageio==2.5.0
 scikit-image==0.14.3
 # tensorflow-graphics==1.0.0, outdated, install directly from github
